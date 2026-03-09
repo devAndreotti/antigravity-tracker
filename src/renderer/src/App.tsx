@@ -1,185 +1,294 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import SkillsPage from './pages/SkillsPage'
 import WorkflowsPage from './pages/WorkflowsPage'
 import McpsPage from './pages/McpsPage'
 import WorkspacesPage from './pages/WorkspacesPage'
+import SettingsPage from './pages/SettingsPage'
+import CommandPalette from './components/CommandPalette'
+import DetailPanel from './components/DetailPanel'
+import RecentlyUsed, { type RecentItem } from './components/RecentlyUsed'
 import {
   SKILLS, WORKFLOWS, MCPS, WORKSPACES,
-  icons, PageId,
-  type Skill, type Workflow, type Mcp, type Workspace
+  icons, type PageId,
 } from './data'
 
 export default function App() {
   const [page, setPage] = useState<PageId>('skills')
   const [search, setSearch] = useState('')
-  const [skillFilter, setSkillFilter] = useState('All')
-  const [workflowFilter, setWorkflowFilter] = useState('All')
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [detail, setDetail] = useState<{ item: any; type: string } | null>(null)
+  const [showPalette, setShowPalette] = useState(false)
+  const [recent, setRecent] = useState<RecentItem[]>([])
+  const [focusIndex, setFocusIndex] = useState(-1)
 
-  // Filtro genérico por busca
-  const filtered = <T extends { description?: string; [k: string]: any }>(arr: T[], key = 'name'): T[] =>
-    arr.filter(i =>
-      !search ||
-      String(i[key] ?? '').toLowerCase().includes(search.toLowerCase()) ||
-      String(i.description ?? '').toLowerCase().includes(search.toLowerCase())
-    )
+  // Filtragem global
+  const q = search.toLowerCase()
+  const filteredSkills = SKILLS.filter(s => !q || s.name.includes(q) || s.description.toLowerCase().includes(q) || s.tags?.some(t => t.includes(q)))
+  const filteredWorkflows = WORKFLOWS.filter(w => !q || w.slug.includes(q) || w.description.toLowerCase().includes(q))
+  const filteredMcps = MCPS.filter(m => !q || m.name.includes(q) || m.description.toLowerCase().includes(q))
+  const filteredWorkspaces = WORKSPACES.filter(w => !q || w.name.includes(q) || w.description.toLowerCase().includes(q))
 
-  const skillCategories = ['All', ...Array.from(new Set(SKILLS.map(s => s.category)))]
-  const filteredSkills = filtered(SKILLS).filter(s => skillFilter === 'All' || s.category === skillFilter)
-  const filteredWorkflows = filtered(WORKFLOWS, 'slug').filter(w =>
-    workflowFilter === 'All' || (workflowFilter === 'Global' ? w.origin === 'global' : w.origin === 'local')
-  )
+  // Contagem de itens por página para keyboard nav
+  const pageItemCounts: Record<string, number> = {
+    skills: filteredSkills.length,
+    workflows: filteredWorkflows.length,
+    mcps: filteredMcps.length,
+    workspaces: filteredWorkspaces.length,
+    settings: 0,
+  }
 
-  const pages = [
-    { id: 'skills' as PageId, label: 'Skills', count: SKILLS.length, icon: icons.skills },
-    { id: 'workflows' as PageId, label: 'Workflows', count: WORKFLOWS.length, icon: icons.workflows },
-    { id: 'mcps' as PageId, label: 'MCPs', count: MCPS.length, icon: icons.mcps },
-    { id: 'workspaces' as PageId, label: 'Workspaces', count: WORKSPACES.length, icon: icons.workspaces },
+  // Selecionar item → detail panel + add to recent
+  const handleSelect = useCallback((item: any, type: string) => {
+    setDetail({ item, type })
+    const label = item.name || item.slug || item.id
+    setRecent(prev => {
+      const filtered = prev.filter(r => !(r.id === item.id && r.type === type))
+      return [{ id: item.id, label, type: type as any, category: item.category || '' }, ...filtered].slice(0, 5)
+    })
+  }, [])
+
+  // Handler para selecionar recent item
+  const handleRecentSelect = useCallback((item: RecentItem) => {
+    const sourceMap: Record<string, any[]> = { skill: SKILLS, workflow: WORKFLOWS, mcp: MCPS, workspace: WORKSPACES }
+    const found = sourceMap[item.type]?.find(x => x.id === item.id)
+    if (found) {
+      const pageMap: Record<string, PageId> = { skill: 'skills', workflow: 'workflows', mcp: 'mcps', workspace: 'workspaces' }
+      setPage(pageMap[item.type])
+      setDetail({ item: found, type: item.type })
+    }
+  }, [])
+
+  // Navegar via Detail Panel (ex: clicar workflow no workspace detail)
+  const handleDetailNavigate = useCallback((targetPage: PageId, itemId?: string) => {
+    setPage(targetPage)
+    if (itemId) {
+      const sourceMap: Record<string, any[]> = { workflows: WORKFLOWS, skills: SKILLS, mcps: MCPS, workspaces: WORKSPACES }
+      const found = sourceMap[targetPage]?.find(x => x.id === itemId || x.slug === itemId)
+      if (found) {
+        const typeMap: Record<string, string> = { workflows: 'workflow', skills: 'skill', mcps: 'mcp', workspaces: 'workspace' }
+        handleSelect(found, typeMap[targetPage])
+      }
+    }
+  }, [handleSelect])
+
+  // Navegar workflow a partir do WorkspacesPage
+  const handleNavigateWorkflow = useCallback((slug: string) => {
+    setPage('workflows')
+    const found = WORKFLOWS.find(w => w.slug === slug)
+    if (found) handleSelect(found, 'workflow')
+  }, [handleSelect])
+
+  // Keyboard navigation global
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const meta = e.metaKey || e.ctrlKey
+      // ⌘K = Command Palette
+      if (meta && e.key === 'k') { e.preventDefault(); setShowPalette(p => !p); return }
+      // ⌘1-5 = trocar aba
+      if (meta && e.key >= '1' && e.key <= '5') {
+        e.preventDefault()
+        const pages: PageId[] = ['skills', 'workflows', 'mcps', 'workspaces', 'settings']
+        const idx = parseInt(e.key) - 1
+        if (pages[idx]) { setPage(pages[idx]); setDetail(null); setFocusIndex(-1) }
+        return
+      }
+      // Escape
+      if (e.key === 'Escape') {
+        if (showPalette) { setShowPalette(false); return }
+        if (detail) { setDetail(null); return }
+        if (search) { setSearch(''); return }
+        setFocusIndex(-1)
+        return
+      }
+      // ↑↓ = navegar itens
+      if (e.key === 'ArrowDown' && !showPalette) {
+        e.preventDefault()
+        setFocusIndex(i => Math.min(i + 1, (pageItemCounts[page] || 1) - 1))
+        return
+      }
+      if (e.key === 'ArrowUp' && !showPalette) {
+        e.preventDefault()
+        setFocusIndex(i => Math.max(i - 1, 0))
+        return
+      }
+      // ↵ = abrir item em foco
+      if (e.key === 'Enter' && focusIndex >= 0 && !showPalette) {
+        const itemArrays: Record<string, any[]> = {
+          skills: filteredSkills, workflows: filteredWorkflows,
+          mcps: filteredMcps, workspaces: filteredWorkspaces,
+        }
+        const items = itemArrays[page]
+        if (items && items[focusIndex]) {
+          const typeMap: Record<string, string> = { skills: 'skill', workflows: 'workflow', mcps: 'mcp', workspaces: 'workspace' }
+          handleSelect(items[focusIndex], typeMap[page])
+        }
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [page, showPalette, detail, search, focusIndex, filteredSkills, filteredWorkflows, filteredMcps, filteredWorkspaces, handleSelect, pageItemCounts])
+
+  // Reset focus ao trocar de página
+  useEffect(() => { setFocusIndex(-1) }, [page])
+
+  const pages: { id: PageId; label: string; count: number; icon: React.ReactNode }[] = [
+    { id: 'skills', label: 'Skills', count: SKILLS.length, icon: icons.skills },
+    { id: 'workflows', label: 'Workflows', count: WORKFLOWS.length, icon: icons.workflows },
+    { id: 'mcps', label: 'MCPs', count: MCPS.length, icon: icons.mcps },
+    { id: 'workspaces', label: 'Workspaces', count: WORKSPACES.length, icon: icons.workspaces },
+    { id: 'settings', label: 'Settings', count: 0, icon: icons.settings },
   ]
 
-  const pageTitles: Record<PageId, { title: string; sub: string }> = {
-    skills: { title: 'Skills', sub: 'Reusable capabilities & specialized knowledge' },
-    workflows: { title: 'Workflows', sub: 'Step-by-step automation scripts' },
-    mcps: { title: 'MCPs', sub: 'Model Context Protocol servers' },
-    workspaces: { title: 'Workspaces', sub: 'Active project directories' },
+  const pageTitles: Record<string, [string, string]> = {
+    skills: ['Skills', 'Reusable capabilities & specialized knowledge'],
+    workflows: ['Workflows', 'Step-by-step automation scripts'],
+    mcps: ['MCPs', 'Model Context Protocol servers'],
+    workspaces: ['Workspaces', 'Active project directories'],
+    settings: ['Settings', 'Application configuration'],
   }
 
   return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', height: '100vh', width: '100%',
-      background: '#080B10', color: '#e2e8f0',
-      fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-      overflow: 'hidden',
-    }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', background: '#080B10', color: '#e2e8f0', fontFamily: "'JetBrains Mono', 'Fira Code', monospace", overflow: 'hidden' }}>
 
-      {/* ─── TOP HEADER ─── */}
+      {/* Command Palette */}
+      {showPalette && <CommandPalette onClose={() => setShowPalette(false)} onNavigate={setPage} onSelect={handleSelect} />}
+
+      {/* HEADER */}
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0 20px', height: 48, background: '#080B10',
-        borderBottom: '1px solid #ffffff0a', flexShrink: 0, gap: 16,
+        display: 'flex', alignItems: 'center', gap: 12, padding: '0 16px', height: 44,
+        background: '#060910', borderBottom: '1px solid #ffffff08', flexShrink: 0,
         WebkitAppRegion: 'drag' as any,
       }}>
-        {/* Esquerda: Logo + breadcrumb */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 200, WebkitAppRegion: 'no-drag' as any }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#a3ff12', boxShadow: '0 0 10px #a3ff1288' }} />
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#a3ff12', letterSpacing: '0.12em', fontFamily: "'Syne', sans-serif" }}>ANTIGRAVITY</span>
-          <span style={{ color: '#ffffff15', fontSize: 14 }}>/</span>
-          <span style={{ fontSize: 11, color: '#94a3b8', letterSpacing: '0.06em' }}>{pageTitles[page].title.toLowerCase()}</span>
-          <span style={{ fontSize: 10, color: '#4a5568', background: '#ffffff08', border: '1px solid #ffffff0a', borderRadius: 4, padding: '1px 5px', marginLeft: 4 }}>
-            {pages.find(p => p.id === page)?.count}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#a3ff12', boxShadow: '0 0 8px #a3ff12' }} />
+          <span style={{ fontSize: 11, fontWeight: 800, color: '#a3ff12', letterSpacing: '0.15em', fontFamily: "'Syne', sans-serif" }}>ANTIGRAVITY</span>
+          <span style={{ color: '#ffffff10', fontSize: 16, margin: '0 2px' }}>/</span>
+          <span style={{ fontSize: 10, color: '#334155' }}>{pageTitles[page]?.[0].toLowerCase()}</span>
         </div>
 
-        {/* Centro: search */}
-        <div style={{ flex: 1, maxWidth: 360, position: 'relative', WebkitAppRegion: 'no-drag' as any }}>
-          <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#4a5568' }}>{icons.search}</span>
-          <input
-            value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search assets..."
-            style={{
-              width: '100%', height: 32, background: '#0d1219', border: '1px solid #ffffff0d',
-              borderRadius: 6, paddingLeft: 32, paddingRight: 12, color: '#e2e8f0',
-              fontSize: 12, fontFamily: 'inherit',
-            }}
-          />
-          {search && (
-            <button onClick={() => setSearch('')} style={{
-              position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-              background: 'none', border: 'none', color: '#4a5568', cursor: 'pointer', fontSize: 14,
-            }}>×</button>
-          )}
+        {/* Search */}
+        <div style={{ flex: 1, maxWidth: 320, position: 'relative', WebkitAppRegion: 'no-drag' as any }}>
+          <svg style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)' }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2d3748" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Filter assets..."
+            style={{ width: '100%', height: 30, background: '#0a0f18', border: '1px solid #ffffff08', borderRadius: 6, paddingLeft: 28, paddingRight: 10, color: '#e2e8f0', fontSize: 11, fontFamily: 'inherit' }} />
         </div>
 
-        {/* Direita: versão + window controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, WebkitAppRegion: 'no-drag' as any }}>
-          <span style={{ fontSize: 10, color: '#2d3748', letterSpacing: '0.08em' }}>v0.1.0</span>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {['#fbbf24', '#4ade80', '#f87171'].map((c, i) => (
-              <div
-                key={i}
-                onClick={() => {
-                  if (i === 0) window.api?.window.minimize()
-                  if (i === 2) window.api?.window.close()
-                }}
-                style={{ width: 10, height: 10, borderRadius: '50%', background: c, opacity: 0.6, cursor: 'pointer' }}
-              />
-            ))}
-          </div>
+        {/* Quick search button */}
+        <button onClick={() => setShowPalette(true)} style={{
+          display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px',
+          background: '#0a0f18', border: '1px solid #ffffff0d', borderRadius: 6,
+          color: '#334155', cursor: 'pointer', fontSize: 10, fontFamily: 'inherit',
+          WebkitAppRegion: 'no-drag' as any,
+        }}>
+          Quick search
+          <span style={{ background: '#ffffff08', padding: '1px 4px', borderRadius: 3, fontSize: 9 }}>⌘K</span>
+        </button>
+
+        <div style={{ flex: 1 }} />
+        <span style={{ fontSize: 9, color: '#1e293b', letterSpacing: '0.08em' }}>v9.1.0</span>
+
+        {/* Window controls */}
+        <div style={{ display: 'flex', gap: 5, WebkitAppRegion: 'no-drag' as any }}>
+          <div onClick={() => (window as any).api?.minimize()} style={{ width: 9, height: 9, borderRadius: '50%', background: '#fbbf24', opacity: 0.5, cursor: 'pointer' }} />
+          <div onClick={() => (window as any).api?.maximize()} style={{ width: 9, height: 9, borderRadius: '50%', background: '#4ade80', opacity: 0.5, cursor: 'pointer' }} />
+          <div onClick={() => (window as any).api?.close()} style={{ width: 9, height: 9, borderRadius: '50%', background: '#f87171', opacity: 0.5, cursor: 'pointer' }} />
         </div>
       </div>
 
-      {/* ─── BODY ─── */}
+      {/* BODY */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
-        {/* ─── SIDEBAR ─── */}
-        <div style={{
-          width: sidebarOpen ? 200 : 56, background: '#080B10', borderRight: '1px solid #ffffff0a',
-          display: 'flex', flexDirection: 'column', padding: '16px 0', flexShrink: 0,
-          transition: 'width 0.2s', overflow: 'hidden',
-        }}>
-          {pages.map(p => (
-            <div
-              key={p.id} className="nav-item"
-              onClick={() => setPage(p.id)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px',
-                margin: '1px 8px', borderRadius: 6, cursor: 'pointer',
-                background: page === p.id ? '#a3ff1212' : 'transparent',
-                color: page === p.id ? '#a3ff12' : '#64748b',
-                borderLeft: page === p.id ? '2px solid #a3ff12' : '2px solid transparent',
-                fontSize: 12, fontWeight: page === p.id ? 600 : 400, letterSpacing: '0.02em',
-                whiteSpace: 'nowrap', overflow: 'hidden',
-              }}
+        {/* SIDEBAR */}
+        <div style={{ width: 188, background: '#060910', borderRight: '1px solid #ffffff08', display: 'flex', flexDirection: 'column', padding: '12px 0', flexShrink: 0 }}>
+          {pages.map((p, i) => (
+            <div key={p.id} onClick={() => { setPage(p.id); setDetail(null) }} style={{
+              display: 'flex', alignItems: 'center', gap: 9, padding: '8px 14px', margin: '1px 8px',
+              borderRadius: 6, cursor: 'pointer', fontSize: 12, transition: 'all 0.15s',
+              background: page === p.id ? '#a3ff1210' : 'transparent',
+              color: page === p.id ? '#a3ff12' : '#4a5568',
+              borderLeft: page === p.id ? '2px solid #a3ff12' : '2px solid transparent',
+              fontWeight: page === p.id ? 600 : 400,
+            }}
+              onMouseEnter={e => page !== p.id && (e.currentTarget.style.background = '#ffffff06')}
+              onMouseLeave={e => page !== p.id && (e.currentTarget.style.background = 'transparent')}
             >
               <span style={{ flexShrink: 0 }}>{p.icon}</span>
-              {sidebarOpen && (
-                <>
-                  <span style={{ flex: 1 }}>{p.label}</span>
-                  <span style={{
-                    fontSize: 10, color: page === p.id ? '#a3ff1288' : '#2d3748',
-                    background: '#ffffff06', padding: '1px 5px', borderRadius: 3,
-                  }}>{p.count}</span>
-                </>
+              <span style={{ flex: 1 }}>{p.label}</span>
+              {p.count > 0 && (
+                <span style={{ fontSize: 10, color: page === p.id ? '#a3ff1270' : '#1e293b', background: '#ffffff06', padding: '0 4px', borderRadius: 3 }}>{p.count}</span>
               )}
             </div>
           ))}
 
+          {/* Atalhos de teclado */}
+          <div style={{ padding: '6px 20px', marginTop: 4 }}>
+            {pages.map((p, i) => (
+              <div key={p.id} style={{ fontSize: 9, color: '#1e293b', display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                <span>{p.label}</span>
+                <span style={{ color: '#2d3748' }}>⌘{i + 1}</span>
+              </div>
+            ))}
+          </div>
+
           <div style={{ flex: 1 }} />
 
-          {/* Resumo do ecossistema */}
-          {sidebarOpen && (
-            <div style={{ margin: '0 12px 12px', padding: 10, background: '#0a0f18', borderRadius: 6, border: '1px solid #ffffff08' }}>
-              <div style={{ fontSize: 9, color: '#2d3748', letterSpacing: '0.1em', marginBottom: 8, textTransform: 'uppercase' }}>Ecosystem</div>
-              {([['Skills', SKILLS.length], ['Workflows', WORKFLOWS.length], ['MCPs', MCPS.length]] as const).map(([l, n]) => (
-                <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#4a5568', marginBottom: 4 }}>
-                  <span>{l}</span>
-                  <span style={{ color: '#a3ff12', fontWeight: 600 }}>{n}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div style={{ padding: '0 16px 4px', fontSize: 9, color: '#1e293b', textAlign: 'center' }}>v0.1.0</div>
+          {/* Ecosystem stats */}
+          <div style={{ margin: '0 12px 8px', padding: 10, background: '#0a0f18', borderRadius: 6, border: '1px solid #ffffff07' }}>
+            <div style={{ fontSize: 9, color: '#1e293b', letterSpacing: '0.1em', marginBottom: 7, textTransform: 'uppercase' }}>Ecosystem</div>
+            {[
+              ['Skills', SKILLS.length, '#a78bfa'],
+              ['Workflows', WORKFLOWS.length, '#a3ff12'],
+              ['MCPs', MCPS.length, '#60a5fa'],
+              ['Workspaces', WORKSPACES.length, '#f97316'],
+            ].map(([l, n, c]) => (
+              <div key={l as string} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#2d3748', marginBottom: 3 }}>
+                <span>{l}</span><span style={{ color: c as string, fontWeight: 600 }}>{n}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* ─── MAIN CONTENT ─── */}
+        {/* MAIN CONTENT */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {/* Header da página */}
-          <div style={{ padding: '16px 20px 12px', borderBottom: '1px solid #ffffff06', flexShrink: 0 }}>
-            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 20, fontWeight: 700, color: '#f1f5f9', letterSpacing: '-0.02em' }}>
-              {pageTitles[page].title}
+          {/* Page header */}
+          <div style={{ padding: '12px 18px 10px', borderBottom: '1px solid #ffffff06', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 700, color: '#f1f5f9', letterSpacing: '-0.02em' }}>{pageTitles[page]?.[0]}</div>
+              <div style={{ fontSize: 10, color: '#2d3748', marginTop: 1 }}>{pageTitles[page]?.[1]}</div>
             </div>
-            <div style={{ fontSize: 11, color: '#4a5568', marginTop: 2 }}>{pageTitles[page].sub}</div>
+            {search && <div style={{ fontSize: 10, color: '#334155' }}>Filtering by "<span style={{ color: '#a3ff12' }}>{search}</span>"</div>}
           </div>
 
-          {/* Conteúdo da página */}
-          <div style={{ flex: 1, overflow: 'auto', padding: '16px 20px' }}>
-            {page === 'skills' && <SkillsPage skills={filteredSkills} categories={skillCategories} filter={skillFilter} setFilter={setSkillFilter} />}
-            {page === 'workflows' && <WorkflowsPage workflows={filteredWorkflows} filter={workflowFilter} setFilter={setWorkflowFilter} />}
-            {page === 'mcps' && <McpsPage mcps={filtered(MCPS)} />}
-            {page === 'workspaces' && <WorkspacesPage workspaces={filtered(WORKSPACES)} />}
+          {/* Content area */}
+          <div style={{ flex: 1, overflow: 'auto', padding: '14px 18px' }}>
+            {/* Recently Used */}
+            {page !== 'settings' && <RecentlyUsed items={recent} onSelect={handleRecentSelect} />}
+
+            {page === 'skills' && <SkillsPage skills={filteredSkills} allSkills={SKILLS} search={search} onSelect={handleSelect} focusIndex={focusIndex} />}
+            {page === 'workflows' && <WorkflowsPage workflows={filteredWorkflows} allWorkflows={WORKFLOWS} search={search} onSelect={handleSelect} focusIndex={focusIndex} />}
+            {page === 'mcps' && <McpsPage mcps={filteredMcps} search={search} onSelect={handleSelect} focusIndex={focusIndex} />}
+            {page === 'workspaces' && <WorkspacesPage workspaces={filteredWorkspaces} search={search} onSelect={handleSelect} onNavigateWorkflow={handleNavigateWorkflow} focusIndex={focusIndex} />}
+            {page === 'settings' && <SettingsPage />}
           </div>
         </div>
+
+        {/* DETAIL PANEL */}
+        {detail && <DetailPanel item={detail.item} type={detail.type} onClose={() => setDetail(null)} onNavigate={handleDetailNavigate} />}
+      </div>
+
+      {/* STATUS BAR */}
+      <div style={{ height: 24, background: '#060910', borderTop: '1px solid #ffffff06', display: 'flex', alignItems: 'center', padding: '0 16px', gap: 16, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 6px #4ade80', display: 'inline-block' }} />
+          <span style={{ fontSize: 9, color: '#2d3748' }}>watching</span>
+        </div>
+        <span style={{ fontSize: 9, color: '#1e293b' }}>Last scan: just now</span>
+        <span style={{ fontSize: 9, color: '#1e293b' }}>•</span>
+        <span style={{ fontSize: 9, color: '#1e293b' }}>{SKILLS.length + WORKFLOWS.length + MCPS.length + WORKSPACES.length} total assets</span>
+        <div style={{ flex: 1 }} />
+        <span style={{ fontSize: 9, color: '#1e293b' }}>⌘K quick search</span>
+        <span style={{ fontSize: 9, color: '#1e293b' }}>•</span>
+        <span style={{ fontSize: 9, color: '#1e293b' }}>click any item for details</span>
       </div>
     </div>
   )
