@@ -1,0 +1,164 @@
+/* Tipografia */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@import "tailwindcss";
+
+/* ========================================
+   ANTIGRAVITY TRACKER — Design System
+   Inspirado nas 4 referências visuais
+   ======================================== */
+
+/* Variáveis do design system */
+@theme {
+  --color-bg-primary: #0a0a0a;
+  --color-bg-surface: #111111;
+  --color-bg-elevated: #1a1a1a;
+  --color-bg-hover: #222222;
+  --color-bg-active: #2a2a2a;
+
+  --color-accent: #c8ff00;
+  --color-accent-dim: #a3cc00;
+  --color-accent-glow: rgba(200, 255, 0, 0.15);
+  --color-accent-border: rgba(200, 255, 0, 0.25);
+
+  --color-text-primary: #f5f5f5;
+  --color-text-secondary: #999999;
+  --color-text-muted: #666666;
+  --color-text-accent: #c8ff00;
+
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-subtle: rgba(255, 255, 255, 0.04);
+  --color-border-hover: rgba(255, 255, 255, 0.12);
+
+  /* Status colors dos badges glassmorfismo */
+  --color-status-running: #00e5a0;
+  --color-status-stopped: #ff4757;
+  --color-status-unknown: #ffa502;
+  --color-status-global: #7c5cfc;
+  --color-status-local: #00b4d8;
+  --color-status-custom: #ff6b9d;
+
+  /* Radius — inspirado nos corners arredondados das referências */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-pill: 9999px;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  /* Fonts */
+  --font-display: 'Outfit', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Transições suaves */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+}
+
+/* Reset base */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: var(--font-display);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  min-height: 100vh;
+  overflow: hidden;
+  background-color: var(--color-bg-primary);
+}
+
+#root {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Scrollbar custom — mínima e elegante */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Seleção de texto */
+::selection {
+  background: rgba(200, 255, 0, 0.25);
+  color: var(--color-text-primary);
+}
+
+/* Drag region para title bar custom */
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Utilitário glassmorphism — estilo dos badges de status */
+.glass {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glass-hover:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Glow effect para cards ativos */
+.glow-accent {
+  box-shadow: 0 0 20px rgba(200, 255, 0, 0.08),
+              0 0 40px rgba(200, 255, 0, 0.04);
+}
+
+/* Animação de entrada suave */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: fade-in-up 0.4s var(--ease-out-expo) both;
+}
