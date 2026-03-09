@@ -1,49 +1,103 @@
-import { ipcMain } from 'electron'
-import { scanSkills, scanGlobalWorkflows, scanMcps, scanWorkspaces, scanAll } from './scanner'
+// ─── IPC HANDLERS ───────────────────────────────────────────────────────────
+// Registra todos os handlers IPC entre main process e renderer.
 
-// Registra todos os handlers IPC do main process
+import { ipcMain, BrowserWindow } from 'electron'
+import { fullScan } from './scanner'
+import { loadConfig, saveConfig } from './config'
+import { createWatcher } from './watcher'
+import type { FSWatcher } from 'chokidar'
+
+let currentWatcher: FSWatcher | null = null
+
+// ─── SETUP ──────────────────────────────────────────────────────────────────
+
 export function registerIpcHandlers(): void {
-  ipcMain.handle('scan:skills', () => {
-    return scanSkills()
+
+  // ─── SCANNER ────────────────────────────────────────────────────────────
+  ipcMain.handle('scanner:fullScan', async () => {
+    const config = loadConfig()
+    return await fullScan(config)
   })
 
-  ipcMain.handle('scan:workflows', () => {
-    const globalWorkflows = scanGlobalWorkflows()
-    const { localWorkflows } = scanWorkspaces()
-    return [...globalWorkflows, ...localWorkflows]
+  // ─── CONFIG ─────────────────────────────────────────────────────────────
+  ipcMain.handle('config:load', () => {
+    return loadConfig()
   })
 
-  ipcMain.handle('scan:mcps', () => {
-    return scanMcps()
+  ipcMain.handle('config:save', async (_e, partial) => {
+    saveConfig(undefined, partial)
+    return loadConfig()
   })
 
-  ipcMain.handle('scan:workspaces', () => {
-    const { workspaces } = scanWorkspaces()
-    return workspaces
+  // ─── WATCHER ────────────────────────────────────────────────────────────
+  ipcMain.handle('watcher:start', () => {
+    const mainWindow = BrowserWindow.getAllWindows()[0]
+    if (mainWindow) restartWatcher(mainWindow)
+    return true
   })
 
-  ipcMain.handle('scan:all', () => {
-    return scanAll()
+  ipcMain.handle('watcher:stop', () => {
+    if (currentWatcher) {
+      currentWatcher.close()
+      currentWatcher = null
+    }
+    return true
   })
 
-  // Controle de janela para title bar custom
+  // ─── WINDOW CONTROLS ───────────────────────────────────────────────────
   ipcMain.handle('window:minimize', (event) => {
-    const { BrowserWindow } = require('electron')
     BrowserWindow.fromWebContents(event.sender)?.minimize()
   })
 
   ipcMain.handle('window:maximize', (event) => {
-    const { BrowserWindow } = require('electron')
     const win = BrowserWindow.fromWebContents(event.sender)
-    if (win?.isMaximized()) {
-      win.unmaximize()
-    } else {
-      win?.maximize()
-    }
+    if (win?.isMaximized()) win.unmaximize()
+    else win?.maximize()
   })
 
   ipcMain.handle('window:close', (event) => {
-    const { BrowserWindow } = require('electron')
     BrowserWindow.fromWebContents(event.sender)?.close()
+  })
+}
+
+// ─── AUTO-START WATCHER ─────────────────────────────────────────────────────
+
+export function autoStartWatcher(mainWindow: BrowserWindow): void {
+  const config = loadConfig()
+  if (config.watchMode) {
+    restartWatcher(mainWindow)
+  }
+}
+
+// ─── RESTART WATCHER ────────────────────────────────────────────────────────
+
+function restartWatcher(mainWindow: BrowserWindow): void {
+  // Para o watcher anterior
+  if (currentWatcher) {
+    currentWatcher.close()
+    currentWatcher = null
+  }
+
+  const config = loadConfig()
+  if (!config.watchMode) return
+
+  // Paths para monitorar
+  const paths = [
+    ...config.skillsDirs,
+    ...config.workflowsDirs,
+    config.mcpConfigPath,
+    ...config.customDirs,
+  ]
+
+  currentWatcher = createWatcher(paths, async (event) => {
+    // Quando algo muda, faz rescan e notifica o renderer
+    try {
+      const data = await fullScan(config)
+      if (!mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('scanner:updated', { event, data })
+      }
+    } catch (err) {
+      console.error('[watcher] Erro ao processar mudança:', err)
+    }
   })
 }

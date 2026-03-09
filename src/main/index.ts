@@ -1,9 +1,9 @@
 import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { registerIpcHandlers } from './ipc'
+import { registerIpcHandlers, autoStartWatcher } from './ipc'
 
-function createWindow(): void {
+function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -39,6 +39,8 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  return mainWindow
 }
 
 app.whenReady().then(() => {
@@ -53,7 +55,12 @@ app.whenReady().then(() => {
   // Registra handlers IPC
   registerIpcHandlers()
 
-  createWindow()
+  const mainWindow = createWindow()
+
+  // Inicia file watcher após janela estar pronta
+  mainWindow.on('ready-to-show', () => {
+    autoStartWatcher(mainWindow)
+  })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

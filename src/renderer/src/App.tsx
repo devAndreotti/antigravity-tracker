@@ -7,8 +7,10 @@ import SettingsPage from './pages/SettingsPage'
 import CommandPalette from './components/CommandPalette'
 import DetailPanel from './components/DetailPanel'
 import RecentlyUsed, { type RecentItem } from './components/RecentlyUsed'
+import { useTrackerStore } from './stores/useTrackerStore'
 import {
-  SKILLS, WORKFLOWS, MCPS, WORKSPACES,
+  SKILLS as MOCK_SKILLS, WORKFLOWS as MOCK_WORKFLOWS,
+  MCPS as MOCK_MCPS, WORKSPACES as MOCK_WORKSPACES,
   icons, type PageId,
 } from './data'
 
@@ -20,12 +22,42 @@ export default function App() {
   const [recent, setRecent] = useState<RecentItem[]>([])
   const [focusIndex, setFocusIndex] = useState(-1)
 
+  // Zustand store — dados reais do filesystem
+  const store = useTrackerStore()
+  const isElectron = typeof window !== 'undefined' && !!window.api?.scan
+
+  // Dados: usa store real se disponível, senão fallback mock
+  const SKILLS = isElectron && store.skills.length > 0 ? store.skills : MOCK_SKILLS
+  const WORKFLOWS = isElectron && store.workflows.length > 0 ? store.workflows : MOCK_WORKFLOWS
+  const MCPS = isElectron && store.mcps.length > 0 ? store.mcps : MOCK_MCPS
+  const WORKSPACES = isElectron && store.workspaces.length > 0 ? store.workspaces : MOCK_WORKSPACES
+
+  // Carrega dados reais ao iniciar
+  useEffect(() => {
+    if (!isElectron) return
+    store.fetchAll()
+    store.loadConfig()
+    // Escuta atualizações do watcher
+    const unsub = window.api.onUpdate(({ data }) => {
+      if (data) {
+        useTrackerStore.setState({
+          skills: data.skills || [],
+          workflows: data.workflows || [],
+          mcps: data.mcps || [],
+          workspaces: data.workspaces || [],
+          lastScan: new Date(),
+        })
+      }
+    })
+    return unsub
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Filtragem global
   const q = search.toLowerCase()
-  const filteredSkills = SKILLS.filter(s => !q || s.name.includes(q) || s.description.toLowerCase().includes(q) || s.tags?.some(t => t.includes(q)))
-  const filteredWorkflows = WORKFLOWS.filter(w => !q || w.slug.includes(q) || w.description.toLowerCase().includes(q))
-  const filteredMcps = MCPS.filter(m => !q || m.name.includes(q) || m.description.toLowerCase().includes(q))
-  const filteredWorkspaces = WORKSPACES.filter(w => !q || w.name.includes(q) || w.description.toLowerCase().includes(q))
+  const filteredSkills = SKILLS.filter((s: any) => !q || s.name?.includes(q) || s.description?.toLowerCase().includes(q) || s.tags?.some((t: string) => t.includes(q)))
+  const filteredWorkflows = WORKFLOWS.filter((w: any) => !q || w.slug?.includes(q) || w.description?.toLowerCase().includes(q))
+  const filteredMcps = MCPS.filter((m: any) => !q || m.name?.includes(q) || m.description?.toLowerCase().includes(q))
+  const filteredWorkspaces = WORKSPACES.filter((w: any) => !q || w.name?.includes(q) || w.description?.toLowerCase().includes(q))
 
   // Contagem de itens por página para keyboard nav
   const pageItemCounts: Record<string, number> = {

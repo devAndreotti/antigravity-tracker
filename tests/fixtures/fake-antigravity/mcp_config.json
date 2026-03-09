@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "stripe": {
+      "command": "npx",
+      "args": ["-y", "@stripe/mcp", "--api-key=$STRIPE_API_KEY"],
+      "env": { "STRIPE_API_KEY": "" }
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"]
+    },
+    "obsidian": {
+      "command": "uvx",
+      "args": ["mcp-obsidian", "--vault=/notes"]
+    }
+  }
+}
