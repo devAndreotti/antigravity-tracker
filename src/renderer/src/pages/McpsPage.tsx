@@ -1,126 +1,60 @@
-import { useMemo, useState } from 'react'
-import { useTrackerStore } from '../stores/useTrackerStore'
-import StatusBadge from '../components/StatusBadge'
+import { Mcp, TYPE_COLORS, Tag, DotStatus } from '../data'
 
-export default function McpsPage() {
-  const { mcps, searchQuery } = useTrackerStore()
-
-  const filtered = useMemo(() => {
-    if (!searchQuery) return mcps
-    const q = searchQuery.toLowerCase()
-    return mcps.filter(m =>
-      m.name.toLowerCase().includes(q) ||
-      m.command.toLowerCase().includes(q) ||
-      m.type.toLowerCase().includes(q)
-    )
-  }, [mcps, searchQuery])
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
-      {filtered.length === 0 ? (
-        <div style={{
-          padding: 'var(--space-2xl)',
-          textAlign: 'center',
-          color: 'var(--color-text-muted)',
-          fontFamily: 'var(--font-display)',
-          fontSize: 14
-        }}>
-          {searchQuery ? `No MCPs matching "${searchQuery}"` : 'No MCPs found'}
-        </div>
-      ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-          gap: 'var(--space-md)'
-        }}>
-          {filtered.map((mcp, i) => (
-            <McpCard key={mcp.id} mcp={mcp} index={i} />
-          ))}
-        </div>
-      )}
-    </div>
-  )
+interface Props {
+  mcps: Mcp[]
 }
 
-function McpCard({ mcp, index }: { mcp: any; index: number }) {
-  const [hovered, setHovered] = useState(false)
-
-  // Cor do gradiente baseada no tipo
-  const typeHues: Record<string, number> = {
-    node: 140,
-    python: 210,
-    docker: 200,
-    url: 40,
-    unknown: 0
-  }
-  const hue = typeHues[mcp.type] ?? 0
-
+export default function McpsPage({ mcps }: Props) {
   return (
-    <div
-      className="animate-in"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        background: 'var(--color-bg-surface)',
-        border: `1px solid ${hovered ? 'var(--color-border-hover)' : 'var(--color-border)'}`,
-        borderRadius: 'var(--radius-lg)',
-        overflow: 'hidden',
-        cursor: 'pointer',
-        transition: `all var(--duration-normal) var(--ease-out-expo)`,
-        transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
-        boxShadow: hovered ? '0 8px 30px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.15)',
-        animationDelay: `${index * 50}ms`
-      }}
-    >
-      {/* Header gradient */}
-      <div style={{
-        height: 4,
-        background: `linear-gradient(90deg, hsl(${hue}, 60%, 45%), hsl(${hue + 30}, 50%, 35%))`,
-        opacity: hovered ? 1 : 0.6,
-        transition: 'opacity 150ms ease'
-      }} />
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+      {mcps.map(mcp => (
+        <div key={mcp.id} className="card" style={{
+          background: '#0a0f18', border: '1px solid #ffffff0d', borderRadius: 8,
+          padding: '14px 16px', position: 'relative', overflow: 'hidden',
+        }}>
+          {/* Linha de acento do tipo */}
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+            background: TYPE_COLORS[mcp.type] || '#4a5568', opacity: 0.6,
+          }} />
 
-      <div style={{ padding: 'var(--space-md)', display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
-        {/* Nome e status */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h3 style={{
-            fontFamily: 'var(--font-display)',
-            fontWeight: 600,
-            fontSize: 15,
-            color: 'var(--color-text-primary)',
-            letterSpacing: '-0.02em'
-          }}>
-            {mcp.name}
-          </h3>
-          <StatusBadge label="unknown" variant="unknown" />
-        </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, marginTop: 4 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9', letterSpacing: '-0.01em' }}>{mcp.name}</span>
+            <DotStatus status={mcp.status} />
+          </div>
 
-        {/* Tipo */}
-        <div style={{ display: 'flex', gap: 6 }}>
-          <StatusBadge label={mcp.type} variant={mcp.type} />
-          <StatusBadge label={mcp.origin} variant={mcp.origin} />
-        </div>
+          <div style={{ fontSize: 11, color: '#4a5568', marginBottom: 10 }}>{mcp.description}</div>
 
-        {/* Command */}
-        <div style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: 11,
-          color: 'var(--color-text-muted)',
-          background: 'var(--color-bg-primary)',
-          padding: '8px 10px',
-          borderRadius: 'var(--radius-sm)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          border: '1px solid var(--color-border-subtle)'
-        }}
-          title={`${mcp.command} ${mcp.args.join(' ')}`}
-        >
-          <span style={{ color: 'var(--color-accent)', opacity: 0.6 }}>$ </span>
-          {mcp.command} {mcp.args.slice(0, 2).join(' ')}
-          {mcp.args.length > 2 && '…'}
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }}>
+            <Tag label={mcp.type} color={TYPE_COLORS[mcp.type]} />
+            <Tag label={mcp.origin} color="#a3ff12" />
+          </div>
+
+          {/* Comando de execução */}
+          {mcp.command && (
+            <div style={{ background: '#060910', borderRadius: 5, padding: '6px 10px', marginBottom: 10, border: '1px solid #ffffff06' }}>
+              <span style={{ fontSize: 9, color: '#2d3748', marginRight: 6 }}>$</span>
+              <span style={{ fontSize: 10, color: '#64748b', fontFamily: 'monospace' }}>
+                {mcp.command.length > 40 ? mcp.command.slice(0, 40) + '…' : mcp.command}
+              </span>
+            </div>
+          )}
+
+          {/* Lista de tools */}
+          {mcp.tools && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+              {mcp.tools.map(t => (
+                <span key={t} style={{
+                  fontSize: 9, color: '#334155', background: '#ffffff05',
+                  border: '1px solid #ffffff08', borderRadius: 3, padding: '1px 5px', fontFamily: 'monospace',
+                }}>
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
-      </div>
+      ))}
     </div>
   )
 }

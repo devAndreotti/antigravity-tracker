@@ -1,114 +1,80 @@
-import { useMemo, useState } from 'react'
-import { useTrackerStore } from '../stores/useTrackerStore'
-import StatusBadge from '../components/StatusBadge'
+import { Workspace, STACK_COLORS, DotStatus } from '../data'
 
-export default function WorkspacesPage() {
-  const { workspaces, searchQuery } = useTrackerStore()
-
-  const filtered = useMemo(() => {
-    if (!searchQuery) return workspaces
-    const q = searchQuery.toLowerCase()
-    return workspaces.filter(w =>
-      w.name.toLowerCase().includes(q) ||
-      w.uri.toLowerCase().includes(q) ||
-      w.corpusName.toLowerCase().includes(q)
-    )
-  }, [workspaces, searchQuery])
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-      {filtered.length === 0 ? (
-        <div style={{
-          padding: 'var(--space-2xl)',
-          textAlign: 'center',
-          color: 'var(--color-text-muted)',
-          fontFamily: 'var(--font-display)',
-          fontSize: 14
-        }}>
-          {searchQuery ? `No workspaces matching "${searchQuery}"` : 'No workspaces found'}
-        </div>
-      ) : (
-        filtered.map((ws, i) => (
-          <WorkspaceRow key={ws.id} workspace={ws} index={i} />
-        ))
-      )}
-    </div>
-  )
+interface Props {
+  workspaces: Workspace[]
 }
 
-function WorkspaceRow({ workspace: ws, index }: { workspace: any; index: number }) {
-  const [hovered, setHovered] = useState(false)
-
+export default function WorkspacesPage({ workspaces }: Props) {
   return (
-    <div
-      className="animate-in"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 'var(--space-md)',
-        padding: 'var(--space-md)',
-        background: hovered ? 'var(--color-bg-elevated)' : 'var(--color-bg-surface)',
-        border: `1px solid ${hovered ? 'var(--color-border-hover)' : 'var(--color-border)'}`,
-        borderRadius: 'var(--radius-md)',
-        cursor: 'pointer',
-        transition: `all var(--duration-fast) ease`,
-        animationDelay: `${index * 30}ms`
-      }}
-    >
-      {/* Ícone de folder */}
-      <div style={{
-        width: 40,
-        height: 40,
-        borderRadius: 'var(--radius-md)',
-        background: ws.hasAgents ? 'var(--color-accent-glow)' : 'var(--color-bg-active)',
-        border: `1px solid ${ws.hasAgents ? 'var(--color-accent-border)' : 'var(--color-border)'}`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0
-      }}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-          stroke={ws.hasAgents ? 'var(--color-accent)' : 'var(--color-text-muted)'}
-          strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
-        </svg>
-      </div>
-
-      {/* Info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontFamily: 'var(--font-display)',
-          fontWeight: 600,
-          fontSize: 14,
-          color: 'var(--color-text-primary)',
-          letterSpacing: '-0.02em'
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {workspaces.map(ws => (
+        <div key={ws.id} className="card" style={{
+          background: '#0a0f18', border: '1px solid #ffffff0d', borderRadius: 8,
+          padding: '16px 18px', position: 'relative',
         }}>
-          {ws.name}
-        </div>
-        <div
-          title={ws.uri}
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 11,
-            color: 'var(--color-text-muted)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          {ws.uri}
-        </div>
-      </div>
+          {/* Barra lateral de status */}
+          <div style={{
+            position: 'absolute', left: 0, top: 0, bottom: 0, width: 3,
+            borderRadius: '8px 0 0 8px',
+            background: ws.status === 'active' ? '#4ade80' : '#fbbf24', opacity: 0.7,
+          }} />
 
-      {/* Badges */}
-      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-        {ws.hasAgents && <StatusBadge label="agents" variant="running" />}
-        {ws.localWorkflows.length > 0 && (
-          <StatusBadge label={`${ws.localWorkflows.length} workflows`} variant="local" />
-        )}
-      </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, alignItems: 'start' }}>
+            <div>
+              {/* Header do workspace */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 5 }}>
+                <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 700, color: '#f1f5f9', letterSpacing: '-0.02em' }}>
+                  {ws.name}
+                </span>
+                <DotStatus status={ws.status} />
+                <span style={{ fontSize: 9, color: '#2d3748' }}>{ws.lastActive}</span>
+              </div>
+
+              <div style={{ fontSize: 11, color: '#4a5568', marginBottom: 10 }}>{ws.description}</div>
+
+              {/* Path do projeto */}
+              <div style={{
+                fontSize: 10, color: '#1e293b', fontFamily: 'monospace', marginBottom: 10,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {ws.path}
+              </div>
+
+              {/* Stack badges */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {ws.stack?.map(s => (
+                  <span key={s} style={{
+                    fontSize: 10, color: STACK_COLORS[s] || '#64748b',
+                    background: `${STACK_COLORS[s] || '#64748b'}12`,
+                    border: `1px solid ${STACK_COLORS[s] || '#64748b'}22`,
+                    borderRadius: 4, padding: '1px 7px', fontWeight: 500,
+                  }}>
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Contadores laterais */}
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              {ws.hasAgents && (
+                <div style={{ textAlign: 'center', padding: '8px 14px', background: '#4ade8010', border: '1px solid #4ade8022', borderRadius: 6 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#4ade80', fontFamily: "'Syne', sans-serif" }}>●</div>
+                  <div style={{ fontSize: 9, color: '#4ade8080', marginTop: 2, letterSpacing: '0.06em' }}>AGENTS</div>
+                </div>
+              )}
+              <div style={{ textAlign: 'center', padding: '8px 14px', background: '#a3ff1210', border: '1px solid #a3ff1222', borderRadius: 6 }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#a3ff12', fontFamily: "'Syne', sans-serif" }}>{ws.workflows}</div>
+                <div style={{ fontSize: 9, color: '#a3ff1280', marginTop: 2, letterSpacing: '0.06em' }}>WORKFLOWS</div>
+              </div>
+              <div style={{ textAlign: 'center', padding: '8px 14px', background: '#60a5fa10', border: '1px solid #60a5fa22', borderRadius: 6 }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#60a5fa', fontFamily: "'Syne', sans-serif" }}>{ws.skills}</div>
+                <div style={{ fontSize: 9, color: '#60a5fa80', marginTop: 2, letterSpacing: '0.06em' }}>SKILLS</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
