@@ -181,38 +181,64 @@ function McpDetail({ item }: { item: Mcp }) {
 }
 
 // ─── WORKSPACE DETAIL ───────────────────────────────────────────────────────
-function WorkspaceDetail({ item, onNavigate }: { item: Workspace; onNavigate?: (page: PageId, itemId?: string) => void }) {
+function WorkspaceDetail({ item, onNavigate }: { item: any; onNavigate?: (page: PageId, itemId?: string) => void }) {
+  // Normaliza workflows — pode ser string[] (mock) ou ParsedWorkflow[] (real)
+  const workflowList: string[] = (item.workflows || []).map((w: any) =>
+    typeof w === 'string' ? w : w?.slug || w?.id || ''
+  ).filter(Boolean)
+
   return (
     <>
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9', marginBottom: 4, fontFamily: "'Syne', sans-serif" }}>{item.name}</div>
-        <DotStatus status={item.status} />
+        <DotStatus status={item.status || 'active'} />
       </div>
-      <Section title="Description">
-        <p style={{ fontSize: 11, color: '#64748b', lineHeight: 1.6 }}>{item.description}</p>
+      {/* Description ou Path */}
+      <Section title={item.description ? 'Description' : 'Location'}>
+        {item.description
+          ? <p style={{ fontSize: 11, color: '#64748b', lineHeight: 1.6 }}>{item.description}</p>
+          : <p style={{ fontSize: 10, color: '#2d3748', fontFamily: 'monospace', lineHeight: 1.6, wordBreak: 'break-all' }}>{item.path || '—'}</p>
+        }
       </Section>
-      <Section title="Stack">
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-          {item.stack?.map(s => (
-            <span key={s} style={{ fontSize: 10, color: STACK_COLORS[s] || '#64748b', background: `${STACK_COLORS[s] || '#64748b'}12`, border: `1px solid ${STACK_COLORS[s] || '#64748b'}22`, borderRadius: 4, padding: '2px 8px', fontWeight: 500 }}>{s}</span>
-          ))}
+      {/* Stack badges (só mock tem) */}
+      {item.stack && item.stack.length > 0 && (
+        <Section title="Stack">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {item.stack.map((s: string) => (
+              <span key={s} style={{ fontSize: 10, color: STACK_COLORS[s] || '#64748b', background: `${STACK_COLORS[s] || '#64748b'}12`, border: `1px solid ${STACK_COLORS[s] || '#64748b'}22`, borderRadius: 4, padding: '2px 8px', fontWeight: 500 }}>{s}</span>
+            ))}
+          </div>
+        </Section>
+      )}
+      {/* Info badges */}
+      <Section title="Info">
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {item.hasAgents && <Tag label="has agents" color="#4ade80" />}
+          {item.hasAgentsMd && <Tag label="agents.md" color="#60a5fa" />}
+          {!item.hasAgents && !item.hasAgentsMd && <span style={{ fontSize: 10, color: '#2d3748' }}>No agent markers detected</span>}
         </div>
       </Section>
-      <Section title={`Linked Workflows (${item.workflows?.length || 0})`}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {item.workflows?.map(w => (
-            <div key={w} onClick={(e) => { e.stopPropagation(); onNavigate?.('workflows', w) }}
-              style={{ padding: '5px 8px', background: '#ffffff05', borderRadius: 4, border: '1px solid #ffffff08', fontSize: 11, color: '#a3ff12', fontFamily: 'monospace', cursor: 'pointer', transition: 'background 0.15s' }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#a3ff1210')}
-              onMouseLeave={e => (e.currentTarget.style.background = '#ffffff05')}
-            >{w}</div>
-          ))}
-        </div>
+      {/* Linked Workflows */}
+      <Section title={`Linked Workflows (${workflowList.length})`}>
+        {workflowList.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {workflowList.map((w: string) => (
+              <div key={w} onClick={(e) => { e.stopPropagation(); onNavigate?.('workflows', w) }}
+                style={{ padding: '5px 8px', background: '#ffffff05', borderRadius: 4, border: '1px solid #ffffff08', fontSize: 11, color: '#a3ff12', fontFamily: 'monospace', cursor: 'pointer', transition: 'background 0.15s' }}
+                onMouseEnter={e => (e.currentTarget.style.background = '#a3ff1210')}
+                onMouseLeave={e => (e.currentTarget.style.background = '#ffffff05')}
+              >{w}</div>
+            ))}
+          </div>
+        ) : (
+          <span style={{ fontSize: 10, color: '#2d3748' }}>No local workflows</span>
+        )}
       </Section>
+      {/* Path */}
       <Section title="Path">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div style={{ flex: 1, fontSize: 9, color: '#2d3748', fontFamily: 'monospace', wordBreak: 'break-all' }}>{item.path}</div>
-          <CopyBtn text={item.path} label="COPY" />
+          <CopyBtn text={item.path || ''} label="COPY" />
         </div>
       </Section>
     </>
