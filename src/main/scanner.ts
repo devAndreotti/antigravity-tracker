@@ -15,7 +15,7 @@ async function exists(p: string): Promise<boolean> {
 
 // ─── SCAN SKILLS ────────────────────────────────────────────────────────────
 
-export async function scanSkills(skillsDir: string): Promise<ParsedSkill[]> {
+export async function scanSkills(skillsDir: string, origin: ParsedSkill['origin'] = 'global'): Promise<ParsedSkill[]> {
   if (!(await exists(skillsDir))) return []
 
   try {
@@ -31,7 +31,7 @@ export async function scanSkills(skillsDir: string): Promise<ParsedSkill[]> {
         const content = await readFile(skillMdPath, 'utf-8')
         const fileStat = await stat(skillMdPath)
         const skill = parseSkillMd(content, skillMdPath)
-        skills.push({ ...skill, updatedAt: fileStat.mtime })
+        skills.push({ ...skill, origin, updatedAt: fileStat.mtime })
       } catch {
         // Ignora skills com erro de leitura
       }
@@ -106,10 +106,7 @@ export async function scanWorkspaces(projectPaths: string[]): Promise<ScannedWor
     const hasUnderscoreAgents = await exists(join(projectPath, '_agents'))
     const hasAgentsMd = await exists(join(projectPath, 'AGENTS.md'))
 
-    // Só considera workspace se tiver markers de agentes
-    if (!hasAgentsDir && !hasAgentDir && !hasUnderscoreAgents && !hasAgentsMd) continue
-
-    // Scan local workflows
+    // Scan local workflows (tenta todas as variações)
     const localWorkflowDirs = [
       join(projectPath, '.agents', 'workflows'),
       join(projectPath, '.agent', 'workflows'),
@@ -122,6 +119,7 @@ export async function scanWorkspaces(projectPaths: string[]): Promise<ScannedWor
       localWorkflows.push(...wfs)
     }
 
+    // INCLUI TODOS os paths existentes — hasAgents é flag, não filtro
     workspaces.push({
       id: basename(projectPath),
       name: basename(projectPath),
@@ -137,6 +135,68 @@ export async function scanWorkspaces(projectPaths: string[]): Promise<ScannedWor
   return workspaces
 }
 
+// ─── SCAN CUSTOM DIR ────────────────────────────────────────────────────────
+// Escaneia um diretório customizado procurando skills, workflows e MCPs.
+// Detecta automaticamente o que tem dentro.
+
+export interface CustomDirResult {
+  skills: ParsedSkill[]
+  workflows: ParsedWorkflow[]
+  mcps: ParsedMcp[]
+}
+
+export async function scanCustomDir(dirPath: string): Promise<CustomDirResult> {
+  const result: CustomDirResult = { skills: [], workflows: [], mcps: [] }
+
+  if (!(await exists(dirPath))) return result
+
+  try {
+    const entries = await readdir(dirPath, { withFileTypes: true })
+
+    for (const entry of entries) {
+      const fullPath = join(dirPath, entry.name)
+
+      if (entry.isDirectory()) {
+        // Sub-pasta com SKILL.md → é uma skill
+        const skillPath = join(fullPath, 'SKILL.md')
+        if (await exists(skillPath)) {
+          try {
+            const content = await readFile(skillPath, 'utf-8')
+            const fileStat = await stat(skillPath)
+            const skill = parseSkillMd(content, skillPath)
+            result.skills.push({ ...skill, origin: 'custom', updatedAt: fileStat.mtime })
+          } catch { /* ignora */ }
+        } else {
+          // Pode ser uma pasta contendo skills (ex: skills/my-skill/SKILL.md)
+          const nested = await scanSkills(fullPath, 'custom')
+          result.skills.push(...nested)
+
+          // Ou uma pasta de workflows (ex: workflows/deploy.md)
+          const nestedWfs = await scanWorkflows(fullPath, 'global')
+          result.workflows.push(...nestedWfs)
+        }
+      } else if (entry.isFile()) {
+        // mcp_config.json → parseia MCPs
+        if (entry.name === 'mcp_config.json') {
+          try {
+            const raw = await readFile(fullPath, 'utf-8')
+            result.mcps.push(...parseMcpConfig(raw))
+          } catch { /* ignora */ }
+        }
+        // .md → pode ser workflow
+        else if (entry.name.endsWith('.md') && entry.name !== 'README.md') {
+          try {
+            const content = await readFile(fullPath, 'utf-8')
+            result.workflows.push(parseWorkflowMd(content, fullPath))
+          } catch { /* ignora */ }
+        }
+      }
+    }
+  } catch { /* ignora erros de acesso */ }
+
+  return result
+}
+
 // ─── LOAD PROJECTS.JSON ─────────────────────────────────────────────────────
 
 export async function loadProjectsJson(projectsJsonPath: string): Promise<string[]> {
@@ -148,7 +208,6 @@ export async function loadProjectsJson(projectsJsonPath: string): Promise<string
     if (Array.isArray(projects)) {
       return projects.map((p: any) => p.root || p.path || p.uri || p).filter(Boolean)
     }
-    // Se é um objeto, tenta pegar values
     if (typeof projects === 'object') {
       return Object.values(projects).map((p: any) => p.root || p.path || p.uri || '').filter(Boolean)
     }
@@ -167,22 +226,30 @@ export async function fullScan(config: {
   customDirs: string[]
   projectsJsonPath: string
 }) {
-  const [skills, globalWorkflows, mcps, projectPaths] = await Promise.all([
-    Promise.all(config.skillsDirs.map(scanSkills)).then(r => r.flat()),
+  // Scan base dirs + MCPs + projects.json em paralelo
+  const [baseSkills, globalWorkflows, baseMcps, projectPaths] = await Promise.all([
+    Promise.all(config.skillsDirs.map(d => scanSkills(d, 'global'))).then(r => r.flat()),
     Promise.all(config.workflowsDirs.map(d => scanWorkflows(d, 'global'))).then(r => r.flat()),
     scanMcps(config.mcpConfigPath),
     loadProjectsJson(config.projectsJsonPath),
   ])
 
+  // Scan custom dirs — detecta skills, workflows E mcps
+  const customResults = await Promise.all(config.customDirs.map(scanCustomDir))
+  const customSkills = customResults.flatMap(r => r.skills)
+  const customWorkflows = customResults.flatMap(r => r.workflows)
+  const customMcps = customResults.flatMap(r => r.mcps)
+
+  // Scan workspaces (projects.json + custom dirs como potenciais workspaces)
   const workspaces = await scanWorkspaces([...projectPaths, ...config.customDirs])
 
   // Junta workflows locais dos workspaces
   const localWorkflows = workspaces.flatMap(ws => ws.workflows || [])
 
   return {
-    skills,
-    workflows: [...globalWorkflows, ...localWorkflows],
-    mcps,
+    skills: [...baseSkills, ...customSkills],
+    workflows: [...globalWorkflows, ...customWorkflows, ...localWorkflows],
+    mcps: [...baseMcps, ...customMcps],
     workspaces,
   }
 }

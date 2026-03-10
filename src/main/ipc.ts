@@ -8,6 +8,17 @@ import { createWatcher } from './watcher'
 import type { FSWatcher } from 'chokidar'
 
 let currentWatcher: FSWatcher | null = null
+let scanIntervalId: ReturnType<typeof setInterval> | null = null
+
+// Converte string do config em ms
+function intervalToMs(interval: string): number | null {
+  switch (interval) {
+    case '30s': return 30_000
+    case '1min': return 60_000
+    case '5min': return 300_000
+    default: return null // 'realtime' usa watcher, não interval
+  }
+}
 
 // ─── SETUP ──────────────────────────────────────────────────────────────────
 
@@ -26,21 +37,26 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('config:save', async (_e, partial) => {
     saveConfig(undefined, partial)
-    return loadConfig()
+    const newConfig = loadConfig()
+
+    // Reinicia watcher/interval se scanInterval ou watchMode mudou
+    const mainWindow = BrowserWindow.getAllWindows()[0]
+    if (mainWindow) {
+      restartScanSystem(mainWindow)
+    }
+
+    return newConfig
   })
 
   // ─── WATCHER ────────────────────────────────────────────────────────────
   ipcMain.handle('watcher:start', () => {
     const mainWindow = BrowserWindow.getAllWindows()[0]
-    if (mainWindow) restartWatcher(mainWindow)
+    if (mainWindow) restartScanSystem(mainWindow)
     return true
   })
 
   ipcMain.handle('watcher:stop', () => {
-    if (currentWatcher) {
-      currentWatcher.close()
-      currentWatcher = null
-    }
+    stopAll()
     return true
   })
 
@@ -60,44 +76,68 @@ export function registerIpcHandlers(): void {
   })
 }
 
-// ─── AUTO-START WATCHER ─────────────────────────────────────────────────────
+// ─── AUTO-START ─────────────────────────────────────────────────────────────
 
 export function autoStartWatcher(mainWindow: BrowserWindow): void {
   const config = loadConfig()
   if (config.watchMode) {
-    restartWatcher(mainWindow)
+    restartScanSystem(mainWindow)
   }
 }
 
-// ─── RESTART WATCHER ────────────────────────────────────────────────────────
+// ─── STOP ALL ───────────────────────────────────────────────────────────────
 
-function restartWatcher(mainWindow: BrowserWindow): void {
-  // Para o watcher anterior
+function stopAll(): void {
   if (currentWatcher) {
     currentWatcher.close()
     currentWatcher = null
   }
+  if (scanIntervalId) {
+    clearInterval(scanIntervalId)
+    scanIntervalId = null
+  }
+}
+
+// ─── RESTART SCAN SYSTEM ────────────────────────────────────────────────────
+// Decide se usa chokidar (realtime) ou setInterval (periódico)
+
+function restartScanSystem(mainWindow: BrowserWindow): void {
+  stopAll()
 
   const config = loadConfig()
   if (!config.watchMode) return
 
-  // Paths para monitorar
-  const paths = [
-    ...config.skillsDirs,
-    ...config.workflowsDirs,
-    config.mcpConfigPath,
-    ...config.customDirs,
-  ]
+  const ms = intervalToMs(config.scanInterval)
 
-  currentWatcher = createWatcher(paths, async (event) => {
-    // Quando algo muda, faz rescan e notifica o renderer
-    try {
-      const data = await fullScan(config)
-      if (!mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('scanner:updated', { event, data })
-      }
-    } catch (err) {
-      console.error('[watcher] Erro ao processar mudança:', err)
+  if (ms === null) {
+    // ─── REALTIME via chokidar ──────────────────────────────────────────
+    const paths = [
+      ...config.skillsDirs,
+      ...config.workflowsDirs,
+      config.mcpConfigPath,
+      ...config.customDirs,
+    ]
+
+    currentWatcher = createWatcher(paths, async () => {
+      await sendScanUpdate(mainWindow, config)
+    })
+  } else {
+    // ─── PERIÓDICO via setInterval ──────────────────────────────────────
+    scanIntervalId = setInterval(async () => {
+      await sendScanUpdate(mainWindow, config)
+    }, ms)
+  }
+}
+
+// ─── SEND SCAN UPDATE ───────────────────────────────────────────────────────
+
+async function sendScanUpdate(mainWindow: BrowserWindow, config: any): Promise<void> {
+  try {
+    const data = await fullScan(config)
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('scanner:updated', { data })
     }
-  })
+  } catch (err) {
+    console.error('[scan] Erro ao processar:', err)
+  }
 }
