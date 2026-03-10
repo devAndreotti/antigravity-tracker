@@ -14,6 +14,7 @@ import {
   MCPS as MOCK_MCPS, WORKSPACES as MOCK_WORKSPACES,
   icons, type PageId,
 } from './data'
+import ViewModeToggle, { type ViewMode } from './components/ViewModeToggle'
 
 // Detecta se é Mac ou Windows para mostrar atalhos corretos
 const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform)
@@ -26,6 +27,7 @@ export default function App() {
   const [showPalette, setShowPalette] = useState(false)
   const [recent, setRecent] = useState<RecentItem[]>([])
   const [focusIndex, setFocusIndex] = useState(-1)
+  const [viewMode, setViewMode] = useState<ViewMode>('auto')
 
   // Zustand store — dados reais do filesystem
   const store = useTrackerStore()
@@ -194,152 +196,178 @@ export default function App() {
     settings: ['Settings', 'Application configuration'],
   }
 
+  const scrollbarStyle = `
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-main);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-subtle);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--border);
+    }
+  `
+
   return (
     <ErrorBoundary>
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', background: 'var(--bg-root)', color: 'var(--text-secondary)', fontFamily: "'JetBrains Mono', 'Fira Code', monospace", overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', background: 'var(--bg-root)', color: 'var(--text-secondary)', fontFamily: "'JetBrains Mono', 'Fira Code', monospace", overflow: 'hidden' }}>
 
-      {/* Command Palette */}
-      {showPalette && <CommandPalette onClose={() => setShowPalette(false)} onNavigate={setPage} onSelect={handleSelect} />}
+        {/* Command Palette */}
+        {showPalette && <CommandPalette onClose={() => setShowPalette(false)} onNavigate={setPage} onSelect={handleSelect} />}
 
-      {/* HEADER */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 12, padding: '0 16px', height: 44,
-        background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0,
-        WebkitAppRegion: 'drag' as any,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#a3ff12', boxShadow: '0 0 8px #a3ff12' }} />
-          <span style={{ fontSize: 11, fontWeight: 800, color: '#a3ff12', letterSpacing: '0.15em', fontFamily: "'Syne', sans-serif" }}>ANTIGRAVITY</span>
-          <span style={{ color: '#ffffff10', fontSize: 16, margin: '0 2px' }}>/</span>
-          <span style={{ fontSize: 10, color: '#334155' }}>{pageTitles[page]?.[0].toLowerCase()}</span>
-        </div>
+        {/* HEADER MAC-LIKE */}
+        <div style={{
+          height: 38, background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-subtle)',
+          display: 'flex', alignItems: 'center', padding: '0 12px', flexShrink: 0,
+          WebkitAppRegion: 'drag',
+        } as React.CSSProperties}>
+          {/* Lado Esquerdo: Logo e Título */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#a3ff12', boxShadow: '0 0 8px #a3ff12' }} />
+            <span style={{ fontSize: 11, fontWeight: 800, color: '#a3ff12', letterSpacing: '0.15em', fontFamily: "'Syne', sans-serif" }}>ANTIGRAVITY</span>
+            <span style={{ color: '#ffffff10', fontSize: 16, margin: '0 2px' }}>/</span>
+            <span style={{ fontSize: 10, color: '#334155' }}>{pageTitles[page]?.[0].toLowerCase()}</span>
+          </div>
 
-        {/* Search */}
-        <div style={{ flex: 1, maxWidth: 320, position: 'relative', WebkitAppRegion: 'no-drag' as any }}>
-          <svg style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)' }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2d3748" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Filter assets..."
-            style={{ width: '100%', height: 30, background: 'var(--bg-input)', border: '1px solid var(--border-subtle)', borderRadius: 6, paddingLeft: 28, paddingRight: 10, color: 'var(--text-secondary)', fontSize: 11, fontFamily: 'inherit' }} />
-        </div>
-
-        {/* Quick search button */}
-        <button onClick={() => setShowPalette(true)} style={{
-          display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px',
-          background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 6,
-          color: 'var(--text-dim)', cursor: 'pointer', fontSize: 10, fontFamily: 'inherit',
-          WebkitAppRegion: 'no-drag' as any,
-        }}>
-          Quick search
-          <span style={{ background: 'var(--accent-bg)', padding: '1px 4px', borderRadius: 3, fontSize: 9, color: 'var(--accent)' }}>{modKey}K</span>
-        </button>
-
-        <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 9, color: '#1e293b', letterSpacing: '0.08em' }}>v9.1.0</span>
-
-        {/* Window controls */}
-        <div style={{ display: 'flex', gap: 5, WebkitAppRegion: 'no-drag' as any }}>
-          <div onClick={() => (window as any).api?.minimize()} style={{ width: 9, height: 9, borderRadius: '50%', background: '#fbbf24', opacity: 0.5, cursor: 'pointer' }} />
-          <div onClick={() => (window as any).api?.maximize()} style={{ width: 9, height: 9, borderRadius: '50%', background: '#4ade80', opacity: 0.5, cursor: 'pointer' }} />
-          <div onClick={() => (window as any).api?.close()} style={{ width: 9, height: 9, borderRadius: '50%', background: '#f87171', opacity: 0.5, cursor: 'pointer' }} />
-        </div>
-      </div>
-
-      {/* BODY */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-
-        {/* SIDEBAR */}
-        <div style={{ width: 188, background: 'var(--bg-surface)', borderRight: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', padding: '12px 0', flexShrink: 0 }}>
-          {pages.map((p, i) => (
-            <div key={p.id} onClick={() => { setPage(p.id); setDetail(null) }} style={{
-              display: 'flex', alignItems: 'center', gap: 9, padding: '8px 14px', margin: '1px 8px',
-              borderRadius: 6, cursor: 'pointer', fontSize: 12, transition: 'all 0.15s',
-              background: page === p.id ? 'var(--accent-bg)' : 'transparent',
-              color: page === p.id ? 'var(--accent)' : 'var(--text-dim)',
-              borderLeft: page === p.id ? '2px solid var(--accent)' : '2px solid transparent',
-              fontWeight: page === p.id ? 600 : 400,
-            }}
-              onMouseEnter={e => page !== p.id && (e.currentTarget.style.background = 'var(--border-faint)')}
-              onMouseLeave={e => page !== p.id && (e.currentTarget.style.background = 'transparent')}
-            >
-              <span style={{ flexShrink: 0 }}>{p.icon}</span>
-              <span style={{ flex: 1 }}>{p.label}</span>
-              {p.count > 0 && (
-                <span style={{ fontSize: 10, color: page === p.id ? 'var(--accent)' : 'var(--text-ghost)', opacity: page === p.id ? 0.6 : 1, background: 'var(--border-faint)', padding: '0 4px', borderRadius: 3 }}>{p.count}</span>
-              )}
+          {/* Centro: Busca e Quick Search */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, justifyContent: 'center' }}>
+            <div style={{ width: '100%', maxWidth: 320, position: 'relative', WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+              <svg style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)' }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2d3748" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+              <input value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Filter assets..."
+                style={{ width: '100%', height: 30, background: 'var(--bg-input)', border: '1px solid var(--border-subtle)', borderRadius: 6, paddingLeft: 28, paddingRight: 10, color: 'var(--text-secondary)', fontSize: 11, fontFamily: 'inherit' }} />
             </div>
-          ))}
 
-          {/* Atalhos de teclado */}
-          <div style={{ padding: '6px 20px', marginTop: 4 }}>
+            <button onClick={() => setShowPalette(true)} style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', height: 30,
+              background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 6,
+              color: 'var(--text-dim)', cursor: 'pointer', fontSize: 10, fontFamily: 'inherit',
+              WebkitAppRegion: 'no-drag', flexShrink: 0
+            } as React.CSSProperties}>
+              Quick search
+              <span style={{ background: 'var(--accent-bg)', padding: '1px 4px', borderRadius: 3, fontSize: 9, color: 'var(--accent)' }}>{modKey}K</span>
+            </button>
+
+            {['skills', 'workflows', 'mcps'].includes(page) && (
+              <div style={{ WebkitAppRegion: 'no-drag', marginLeft: 4 } as React.CSSProperties}>
+                <ViewModeToggle mode={viewMode} onChange={setViewMode} />
+              </div>
+            )}
+          </div>
+
+          {/* Lado Direito: Versão e Controles */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, justifyContent: 'flex-end' }}>
+            <span style={{ fontSize: 9, color: '#1e293b', letterSpacing: '0.08em' }}>v9.1.0</span>
+
+            <div style={{ display: 'flex', gap: 5, WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+              <div onClick={() => (window as any).api?.minimize()} style={{ width: 9, height: 9, borderRadius: '50%', background: '#fbbf24', opacity: 0.5, cursor: 'pointer' }} />
+              <div onClick={() => (window as any).api?.maximize()} style={{ width: 9, height: 9, borderRadius: '50%', background: '#4ade80', opacity: 0.5, cursor: 'pointer' }} />
+              <div onClick={() => (window as any).api?.close()} style={{ width: 9, height: 9, borderRadius: '50%', background: '#f87171', opacity: 0.5, cursor: 'pointer' }} />
+            </div>
+          </div>
+        </div>
+
+        {/* BODY */}
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+
+          {/* SIDEBAR */}
+          <div style={{ width: 188, background: 'var(--bg-surface)', borderRight: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', padding: '12px 0', flexShrink: 0 }}>
             {pages.map((p, i) => (
-              <div key={p.id} style={{ fontSize: 9, color: 'var(--text-ghost)', display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                <span>{p.label}</span>
-                <span style={{ color: 'var(--text-faint)' }}>{modKey}{i + 1}</span>
+              <div key={p.id} onClick={() => { setPage(p.id); setDetail(null) }} style={{
+                display: 'flex', alignItems: 'center', gap: 9, padding: '8px 14px', margin: '1px 8px',
+                borderRadius: 6, cursor: 'pointer', fontSize: 12, transition: 'all 0.15s',
+                background: page === p.id ? 'var(--accent-bg)' : 'transparent',
+                color: page === p.id ? 'var(--accent)' : 'var(--text-dim)',
+                borderLeft: page === p.id ? '2px solid var(--accent)' : '2px solid transparent',
+                fontWeight: page === p.id ? 600 : 400,
+              }}
+                onMouseEnter={e => page !== p.id && (e.currentTarget.style.background = 'var(--border-faint)')}
+                onMouseLeave={e => page !== p.id && (e.currentTarget.style.background = 'transparent')}
+              >
+                <span style={{ flexShrink: 0 }}>{p.icon}</span>
+                <span style={{ flex: 1 }}>{p.label}</span>
+                {p.count > 0 && (
+                  <span style={{ fontSize: 10, color: page === p.id ? 'var(--accent)' : 'var(--text-ghost)', opacity: page === p.id ? 0.6 : 1, background: 'var(--border-faint)', padding: '0 4px', borderRadius: 3 }}>{p.count}</span>
+                )}
               </div>
             ))}
-          </div>
 
-          <div style={{ flex: 1 }} />
-
-          {/* Ecosystem stats */}
-          <div style={{ margin: '0 12px 8px', padding: 10, background: 'var(--bg-card)', borderRadius: 6, border: '1px solid var(--border-faint)' }}>
-            <div style={{ fontSize: 9, color: 'var(--text-ghost)', letterSpacing: '0.1em', marginBottom: 7, textTransform: 'uppercase' }}>Ecosystem</div>
-            {[
-              ['Skills', SKILLS.length, '#a78bfa'],
-              ['Workflows', WORKFLOWS.length, 'var(--accent)'],
-              ['MCPs', MCPS.length, '#60a5fa'],
-              ['Workspaces', WORKSPACES.length, '#f97316'],
-            ].map(([l, n, c]) => (
-              <div key={l as string} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-faint)', marginBottom: 3 }}>
-                <span>{l}</span><span style={{ color: c as string, fontWeight: 600 }}>{n}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* MAIN CONTENT */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {/* Page header */}
-          <div style={{ padding: '12px 18px 10px', borderBottom: '1px solid var(--border-faint)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{pageTitles[page]?.[0]}</div>
-              <div style={{ fontSize: 10, color: '#2d3748', marginTop: 1 }}>{pageTitles[page]?.[1]}</div>
+            {/* Atalhos de teclado */}
+            <div style={{ padding: '6px 20px', marginTop: 4 }}>
+              {pages.map((p, i) => (
+                <div key={p.id} style={{ fontSize: 9, color: 'var(--text-ghost)', display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                  <span>{p.label}</span>
+                  <span style={{ color: 'var(--text-faint)' }}>{modKey}{i + 1}</span>
+                </div>
+              ))}
             </div>
-            {search && <div style={{ fontSize: 10, color: '#334155' }}>Filtering by "<span style={{ color: '#a3ff12' }}>{search}</span>"</div>}
+
+            <div style={{ flex: 1 }} />
+
+            {/* Ecosystem stats */}
+            <div style={{ margin: '0 12px 8px', padding: 10, background: 'var(--bg-card)', borderRadius: 6, border: '1px solid var(--border-faint)' }}>
+              <div style={{ fontSize: 9, color: 'var(--text-ghost)', letterSpacing: '0.1em', marginBottom: 7, textTransform: 'uppercase' }}>Ecosystem</div>
+              {[
+                ['Skills', SKILLS.length, '#a78bfa'],
+                ['Workflows', WORKFLOWS.length, 'var(--accent)'],
+                ['MCPs', MCPS.length, '#60a5fa'],
+                ['Workspaces', WORKSPACES.length, '#f97316'],
+              ].map(([l, n, c]) => (
+                <div key={l as string} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-faint)', marginBottom: 3 }}>
+                  <span>{l}</span><span style={{ color: c as string, fontWeight: 600 }}>{n}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Content area */}
-          <div style={{ flex: 1, overflow: 'auto', padding: '14px 18px' }}>
-            {/* Recently Used */}
-            {page !== 'settings' && <RecentlyUsed items={recent} onSelect={handleRecentSelect} />}
+          {/* MAIN CONTENT */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            {/* Page header */}
+            <div style={{ padding: '12px 18px 10px', borderBottom: '1px solid var(--border-faint)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{pageTitles[page]?.[0]}</div>
+                <div style={{ fontSize: 10, color: '#2d3748', marginTop: 1 }}>{pageTitles[page]?.[1]}</div>
+              </div>
+              {search && <div style={{ fontSize: 10, color: '#334155' }}>Filtering by "<span style={{ color: '#a3ff12' }}>{search}</span>"</div>}
+            </div>
 
-            {page === 'skills' && <SkillsPage skills={filteredSkills} allSkills={SKILLS} search={search} onSelect={handleSelect} focusIndex={focusIndex} />}
-            {page === 'workflows' && <WorkflowsPage workflows={filteredWorkflows} allWorkflows={WORKFLOWS} search={search} onSelect={handleSelect} focusIndex={focusIndex} />}
-            {page === 'mcps' && <McpsPage mcps={filteredMcps} search={search} onSelect={handleSelect} focusIndex={focusIndex} />}
-            {page === 'workspaces' && <WorkspacesPage workspaces={filteredWorkspaces} search={search} onSelect={handleSelect} onNavigateWorkflow={handleNavigateWorkflow} focusIndex={focusIndex} />}
-            {page === 'settings' && <SettingsPage />}
+            {/* Content area */}
+            <div style={{ flex: 1, overflow: 'auto', padding: '14px 18px' }}>
+              {/* Recently Used */}
+              {page !== 'settings' && <RecentlyUsed items={recent} onSelect={handleRecentSelect} />}
+
+              {page === 'skills' && <SkillsPage skills={filteredSkills} allSkills={SKILLS} search={search} onSelect={handleSelect} focusIndex={focusIndex} viewMode={viewMode} />}
+              {page === 'workflows' && <WorkflowsPage workflows={filteredWorkflows} allWorkflows={WORKFLOWS} search={search} onSelect={handleSelect} focusIndex={focusIndex} viewMode={viewMode} />}
+              {page === 'mcps' && <McpsPage mcps={filteredMcps} search={search} onSelect={handleSelect} focusIndex={focusIndex} viewMode={viewMode} />}
+              {page === 'workspaces' && <WorkspacesPage workspaces={filteredWorkspaces} search={search} onSelect={handleSelect} onNavigateWorkflow={handleNavigateWorkflow} focusIndex={focusIndex} />}
+              {page === 'settings' && <SettingsPage />}
+            </div>
           </div>
+
+          {/* DETAIL PANEL */}
+          {detail && <DetailPanel item={detail.item} type={detail.type} onClose={() => setDetail(null)} onNavigate={handleDetailNavigate} />}
         </div>
 
-        {/* DETAIL PANEL */}
-        {detail && <DetailPanel item={detail.item} type={detail.type} onClose={() => setDetail(null)} onNavigate={handleDetailNavigate} />}
-      </div>
-
-      {/* STATUS BAR */}
-      <div style={{ height: 24, background: 'var(--bg-surface)', borderTop: '1px solid var(--border-faint)', display: 'flex', alignItems: 'center', padding: '0 16px', gap: 16, flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 6px #4ade80', display: 'inline-block' }} />
-          <span style={{ fontSize: 9, color: 'var(--text-faint)' }}>watching</span>
+        {/* STATUS BAR */}
+        <div style={{ height: 24, background: 'var(--bg-surface)', borderTop: '1px solid var(--border-faint)', display: 'flex', alignItems: 'center', padding: '0 16px', gap: 16, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 6px #4ade80', display: 'inline-block' }} />
+            <span style={{ fontSize: 9, color: 'var(--text-faint)' }}>watching</span>
+          </div>
+          <span style={{ fontSize: 9, color: 'var(--text-ghost)' }}>Last scan: {store.lastScan ? store.lastScan.toLocaleTimeString() : 'just now'}</span>
+          <span style={{ fontSize: 9, color: 'var(--text-ghost)' }}>•</span>
+          <span style={{ fontSize: 9, color: 'var(--text-ghost)' }}>{SKILLS.length + WORKFLOWS.length + MCPS.length + WORKSPACES.length} total assets</span>
+          <div style={{ flex: 1 }} />
+          <span style={{ fontSize: 9, color: 'var(--text-ghost)' }}>{modKey}K quick search</span>
+          <span style={{ fontSize: 9, color: 'var(--text-ghost)' }}>•</span>
+          <span style={{ fontSize: 9, color: 'var(--text-ghost)' }}>click any item for details</span>
         </div>
-        <span style={{ fontSize: 9, color: 'var(--text-ghost)' }}>Last scan: {store.lastScan ? store.lastScan.toLocaleTimeString() : 'just now'}</span>
-        <span style={{ fontSize: 9, color: 'var(--text-ghost)' }}>•</span>
-        <span style={{ fontSize: 9, color: 'var(--text-ghost)' }}>{SKILLS.length + WORKFLOWS.length + MCPS.length + WORKSPACES.length} total assets</span>
-        <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 9, color: 'var(--text-ghost)' }}>{modKey}K quick search</span>
-        <span style={{ fontSize: 9, color: 'var(--text-ghost)' }}>•</span>
-        <span style={{ fontSize: 9, color: 'var(--text-ghost)' }}>click any item for details</span>
       </div>
-    </div>
     </ErrorBoundary>
   )
 }

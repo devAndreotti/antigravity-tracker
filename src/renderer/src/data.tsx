@@ -11,12 +11,12 @@ export interface Skill {
 
 export interface Workflow {
   id: string; slug: string; description: string; category: string
-  origin: string; uses: number; workspace?: string; lastUsed?: string
+  origin: string; uses: number; workspace?: string; lastUsed?: string; tags?: string[]
 }
 
 export interface Mcp {
   id: string; name: string; type: string; origin: string
-  status: string; command: string; tools: string[]; description: string
+  status: string; command: string; tools: string[]; description: string; tags?: string[]
 }
 
 export interface Workspace {
@@ -45,34 +45,34 @@ export const SKILLS: Skill[] = [
 ]
 
 export const WORKFLOWS: Workflow[] = [
-  { id: "ai-agent", slug: "/ai-agent", description: "Create AI agents with tools and capabilities. Scaffolds agent loop, tool definitions, and system prompt.", category: "AI", origin: "global", uses: 42, lastUsed: "1h ago" },
-  { id: "ai-jail", slug: "/ai-jail", description: "Test AI agent limits and establish governance rules using the Akita Method (Day 1).", category: "AI", origin: "global", uses: 12, lastUsed: "3d ago" },
-  { id: "akita-way", slug: "/akita-way", description: "Full XP + AI development workflow based on Fabio Akita's methodology. TDD-first.", category: "Dev", origin: "global", uses: 89, lastUsed: "30m ago" },
-  { id: "api-docs", slug: "/api-docs", description: "Generate API documentation in OpenAPI, JSDoc, TSDoc formats from source code.", category: "Dev", origin: "global", uses: 55, lastUsed: "2h ago" },
-  { id: "architecture", slug: "/architecture", description: "Create architecture diagrams using Mermaid or C4 notation.", category: "Dev", origin: "global", uses: 34, lastUsed: "1d ago" },
-  { id: "auth-implementation", slug: "/auth-implementation", description: "Implement authentication patterns — JWT, OAuth2, session-based, magic links.", category: "Dev", origin: "global", uses: 28, lastUsed: "5d ago" },
-  { id: "ci-cd", slug: "/ci-cd", description: "Set up CI/CD pipelines for GitHub Actions, GitLab CI, or CircleCI.", category: "Dev", origin: "global", uses: 19, lastUsed: "1w ago" },
-  { id: "cli-tool", slug: "/cli-tool", description: "Build command-line applications with argument parsing and proper exit codes.", category: "Dev", origin: "global", uses: 23, lastUsed: "4d ago" },
-  { id: "code-review", slug: "/code-review", description: "Perform comprehensive code review checking quality, security and performance.", category: "Dev", origin: "global", uses: 67, lastUsed: "2h ago" },
-  { id: "dashboard-ui", slug: "/dashboard-ui", description: "Create professional admin dashboard interfaces with charts and tables.", category: "Design", origin: "global", uses: 31, lastUsed: "3d ago" },
-  { id: "db-migrate", slug: "/db-migrate", description: "Create and run database migrations safely with rollback support.", category: "Dev", origin: "global", uses: 14, lastUsed: "1w ago" },
-  { id: "db-schema", slug: "/db-schema", description: "Design database schemas with proper indexing, relations and naming.", category: "Dev", origin: "global", uses: 26, lastUsed: "6d ago" },
-  { id: "deploy-vercel", slug: "/deploy-vercel", description: "Deploy applications to Vercel with env config and preview deployments.", category: "Dev", origin: "global", uses: 18, lastUsed: "2d ago" },
-  { id: "n8n-build", slug: "/n8n-build", description: "Build complete n8n automation workflows from requirements.", category: "n8n", origin: "global", uses: 44, lastUsed: "4h ago" },
-  { id: "antigravity-tracker", slug: "/antigravity-tracker", description: "Tracks and indexes all Antigravity assets in the local ecosystem.", category: "Dev", origin: "local", workspace: "antigravity-tracker", uses: 3, lastUsed: "now" },
+  { id: "ai-agent", slug: "/ai-agent", description: "Create AI agents with tools and capabilities. Scaffolds agent loop, tool definitions, and system prompt.", category: "AI", origin: "global", uses: 42, lastUsed: "1h ago", tags: ["ai", "agent", "llm"] },
+  { id: "ai-jail", slug: "/ai-jail", description: "Test AI agent limits and establish governance rules using the Akita Method (Day 1).", category: "AI", origin: "global", uses: 12, lastUsed: "3d ago", tags: ["ai", "testing", "security"] },
+  { id: "akita-way", slug: "/akita-way", description: "Full XP + AI development workflow based on Fabio Akita's methodology. TDD-first.", category: "Dev", origin: "global", uses: 89, lastUsed: "30m ago", tags: ["dev", "tdd", "agile"] },
+  { id: "api-docs", slug: "/api-docs", description: "Generate API documentation in OpenAPI, JSDoc, TSDoc formats from source code.", category: "Dev", origin: "global", uses: 55, lastUsed: "2h ago", tags: ["api", "docs", "documentation"] },
+  { id: "architecture", slug: "/architecture", description: "Create architecture diagrams using Mermaid or C4 notation.", category: "Dev", origin: "global", uses: 34, lastUsed: "1d ago", tags: ["architecture", "diagrams", "mermaid"] },
+  { id: "auth-implementation", slug: "/auth-implementation", description: "Implement authentication patterns — JWT, OAuth2, session-based, magic links.", category: "Dev", origin: "global", uses: 28, lastUsed: "5d ago", tags: ["auth", "security", "jwt"] },
+  { id: "ci-cd", slug: "/ci-cd", description: "Set up CI/CD pipelines for GitHub Actions, GitLab CI, or CircleCI.", category: "Dev", origin: "global", uses: 19, lastUsed: "1w ago", tags: ["ci-cd", "devops", "github-actions"] },
+  { id: "cli-tool", slug: "/cli-tool", description: "Build command-line applications with argument parsing and proper exit codes.", category: "Dev", origin: "global", uses: 23, lastUsed: "4d ago", tags: ["cli", "terminal", "node"] },
+  { id: "code-review", slug: "/code-review", description: "Perform comprehensive code review checking quality, security and performance.", category: "Dev", origin: "global", uses: 67, lastUsed: "2h ago", tags: ["review", "quality", "security"] },
+  { id: "dashboard-ui", slug: "/dashboard-ui", description: "Create professional admin dashboard interfaces with charts and tables.", category: "Design", origin: "global", uses: 31, lastUsed: "3d ago", tags: ["ui", "dashboard", "react"] },
+  { id: "db-migrate", slug: "/db-migrate", description: "Create and run database migrations safely with rollback support.", category: "Dev", origin: "global", uses: 14, lastUsed: "1w ago", tags: ["database", "migration", "sql"] },
+  { id: "db-schema", slug: "/db-schema", description: "Design database schemas with proper indexing, relations and naming.", category: "Dev", origin: "global", uses: 26, lastUsed: "6d ago", tags: ["database", "schema", "architecture"] },
+  { id: "deploy-vercel", slug: "/deploy-vercel", description: "Deploy applications to Vercel with env config and preview deployments.", category: "Dev", origin: "global", uses: 18, lastUsed: "2d ago", tags: ["deploy", "vercel", "devops"] },
+  { id: "n8n-build", slug: "/n8n-build", description: "Build complete n8n automation workflows from requirements.", category: "n8n", origin: "global", uses: 44, lastUsed: "4h ago", tags: ["n8n", "automation", "workflow"] },
+  { id: "antigravity-tracker", slug: "/antigravity-tracker", description: "Tracks and indexes all Antigravity assets in the local ecosystem.", category: "Dev", origin: "local", workspace: "antigravity-tracker", uses: 3, lastUsed: "now", tags: ["tracker", "electron", "react"] },
 ]
 
 export const MCPS: Mcp[] = [
-  { id: "github-mcp-server", name: "github-mcp-server", type: "docker", origin: "global", status: "unknown", command: "docker run -i ghcr.io/github/github-mcp-server", tools: ["list_repos", "create_pr", "get_issues", "search_code", "create_branch", "merge_pr"], description: "Full GitHub API via Docker container" },
-  { id: "stripe", name: "stripe", type: "node", origin: "global", status: "unknown", command: "npx -y @stripe/mcp --api-key=$STRIPE_API_KEY", tools: ["list_customers", "create_payment", "get_subscription", "create_invoice"], description: "Stripe payment processing & billing" },
-  { id: "n8n-mcp", name: "n8n-mcp", type: "node", origin: "global", status: "unknown", command: "node C:\\Users\\ricar\\AppData\\Roaming\\npm\\node_modules\\n8n-mcp\\dist\\index.js", tools: ["list_workflows", "execute_workflow", "get_executions", "create_workflow"], description: "n8n workflow automation control" },
-  { id: "firecrawl-mcp", name: "firecrawl-mcp", type: "node", origin: "global", status: "unknown", command: "node C:\\Users\\ricar\\AppData\\Roaming\\npm\\node_modules\\firecrawl-mcp\\dist\\index.js", tools: ["scrape_url", "crawl_site", "search", "extract_data"], description: "Web scraping & data extraction" },
-  { id: "mcp-obsidian", name: "mcp-obsidian", type: "python", origin: "global", status: "unknown", command: "C:\\Users\\ricar\\.local\\bin\\uvx.exe mcp-obsidian --vault=$OBSIDIAN_VAULT", tools: ["read_note", "create_note", "search_notes", "list_vault"], description: "Obsidian vault read/write operations" },
-  { id: "playwright", name: "playwright", type: "node", origin: "global", status: "unknown", command: "npx -y @playwright/mcp@latest", tools: ["navigate", "click", "screenshot", "evaluate", "fill_form"], description: "Browser automation & testing" },
-  { id: "supabase", name: "supabase", type: "unknown", origin: "global", status: "unknown", command: "", tools: ["query", "insert", "update", "auth", "storage"], description: "Supabase database, auth & storage" },
-  { id: "remotion-documentation", name: "remotion-documentation", type: "node", origin: "global", status: "unknown", command: "npx -y @remotion/mcp@latest", tools: ["search_docs", "get_api", "get_example"], description: "Remotion video documentation lookup" },
-  { id: "gsap-master", name: "gsap-master", type: "node", origin: "global", status: "unknown", command: "npx -y gsap-mcp@latest", tools: ["animate", "timeline", "scroll_trigger", "morph_svg"], description: "GSAP animation toolkit" },
-  { id: "lenis-mcp", name: "lenis-mcp", type: "node", origin: "global", status: "unknown", command: "npx -y lenis-mcp@latest", tools: ["smooth_scroll", "configure", "get_velocity"], description: "Lenis smooth scroll integration" },
+  { id: "github-mcp-server", name: "github-mcp-server", type: "docker", origin: "global", status: "unknown", command: "docker run -i ghcr.io/github/github-mcp-server", tools: ["list_repos", "create_pr", "get_issues", "search_code", "create_branch", "merge_pr"], description: "Full GitHub API via Docker container", tags: ["github", "docker", "git"] },
+  { id: "stripe", name: "stripe", type: "node", origin: "global", status: "unknown", command: "npx -y @stripe/mcp --api-key=$STRIPE_API_KEY", tools: ["list_customers", "create_payment", "get_subscription", "create_invoice"], description: "Stripe payment processing & billing", tags: ["stripe", "billing", "api"] },
+  { id: "n8n-mcp", name: "n8n-mcp", type: "node", origin: "global", status: "unknown", command: "node C:\\Users\\ricar\\AppData\\Roaming\\npm\\node_modules\\n8n-mcp\\dist\\index.js", tools: ["list_workflows", "execute_workflow", "get_executions", "create_workflow"], description: "n8n workflow automation control", tags: ["n8n", "automation"] },
+  { id: "firecrawl-mcp", name: "firecrawl-mcp", type: "node", origin: "global", status: "unknown", command: "node C:\\Users\\ricar\\AppData\\Roaming\\npm\\node_modules\\firecrawl-mcp\\dist\\index.js", tools: ["scrape_url", "crawl_site", "search", "extract_data"], description: "Web scraping & data extraction", tags: ["scraping", "crawler", "data"] },
+  { id: "mcp-obsidian", name: "mcp-obsidian", type: "python", origin: "global", status: "unknown", command: "C:\\Users\\ricar\\.local\\bin\\uvx.exe mcp-obsidian --vault=$OBSIDIAN_VAULT", tools: ["read_note", "create_note", "search_notes", "list_vault"], description: "Obsidian vault read/write operations", tags: ["obsidian", "notes", "markdown"] },
+  { id: "playwright", name: "playwright", type: "node", origin: "global", status: "unknown", command: "npx -y @playwright/mcp@latest", tools: ["navigate", "click", "screenshot", "evaluate", "fill_form"], description: "Browser automation & testing", tags: ["testing", "playwright", "automation"] },
+  { id: "supabase", name: "supabase", type: "unknown", origin: "global", status: "unknown", command: "", tools: ["query", "insert", "update", "auth", "storage"], description: "Supabase database, auth & storage", tags: ["database", "supabase", "auth"] },
+  { id: "remotion-documentation", name: "remotion-documentation", type: "node", origin: "global", status: "unknown", command: "npx -y @remotion/mcp@latest", tools: ["search_docs", "get_api", "get_example"], description: "Remotion video documentation lookup", tags: ["remotion", "video", "docs"] },
+  { id: "gsap-master", name: "gsap-master", type: "node", origin: "global", status: "unknown", command: "npx -y gsap-mcp@latest", tools: ["animate", "timeline", "scroll_trigger", "morph_svg"], description: "GSAP animation toolkit", tags: ["animation", "gsap", "frontend"] },
+  { id: "lenis-mcp", name: "lenis-mcp", type: "node", origin: "global", status: "unknown", command: "npx -y lenis-mcp@latest", tools: ["smooth_scroll", "configure", "get_velocity"], description: "Lenis smooth scroll integration", tags: ["scroll", "lenis", "frontend"] },
 ]
 
 export const WORKSPACES: Workspace[] = [
@@ -190,7 +190,7 @@ export function CopyBtn({ text, label }: { text: string; label?: string }) {
   const [copied, setCopied] = React.useState(false)
   const copy = (e: React.MouseEvent) => {
     e.stopPropagation()
-    navigator.clipboard?.writeText(text).catch(() => {})
+    navigator.clipboard?.writeText(text).catch(() => { })
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }

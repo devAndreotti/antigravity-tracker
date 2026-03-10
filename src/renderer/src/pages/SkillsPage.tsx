@@ -8,9 +8,10 @@ interface Props {
   search: string
   onSelect: (item: Skill, type: string) => void
   focusIndex?: number
+  viewMode?: 'auto' | '2col' | '3col' | 'list'
 }
 
-export default function SkillsPage({ skills, allSkills, search, onSelect, focusIndex }: Props) {
+export default function SkillsPage({ skills, allSkills, search, onSelect, focusIndex, viewMode = 'auto' }: Props) {
   const [filter, setFilter] = useState('All')
   const [pinned, setPinned] = useState<string[]>(allSkills.filter(s => s.pinned).map(s => s.id))
   const categories = ['All', ...Array.from(new Set(allSkills.map(s => s.category)))]
@@ -27,8 +28,10 @@ export default function SkillsPage({ skills, allSkills, search, onSelect, focusI
 
   const SkillCard = ({ skill, isFocused }: { skill: Skill; isFocused: boolean }) => (
     <div onClick={() => onSelect(skill, 'skill')} className="card" style={{
-      background: '#0a0f18', border: `1px solid ${isFocused ? '#a3ff1244' : '#ffffff0d'}`,
-      borderRadius: 8, padding: '14px 16px', position: 'relative', overflow: 'hidden', cursor: 'pointer',
+      background: 'var(--bg-card)', border: `1px solid ${isFocused ? 'var(--accent-alpha)' : 'var(--border)'}`,
+      borderRadius: 8, padding: viewMode === 'list' ? '10px 16px' : '14px 16px', position: 'relative', overflow: 'hidden', cursor: 'pointer',
+      display: viewMode === 'list' ? 'flex' : 'block',
+      alignItems: 'center', gap: 16
     }}>
       {/* Accent line */}
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: CATEGORY_COLORS[skill.category] || '#4a5568', opacity: 0.7 }} />
@@ -39,28 +42,37 @@ export default function SkillsPage({ skills, allSkills, search, onSelect, focusI
           color: pinned.includes(skill.id) ? '#a3ff12' : '#2d3748',
         }}>★</button>
       </div>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6, marginTop: 4, paddingRight: 20 }}>
-        <div style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>
+      {/* Header / Name */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: viewMode === 'list' ? 0 : 6, marginTop: viewMode === 'list' ? 0 : 4, paddingRight: viewMode === 'list' ? 0 : 20, width: viewMode === 'list' ? 240 : 'auto', flexShrink: 0 }}>
+        <div style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
           {highlightText(skill.name, search)}
         </div>
-        <span style={{ fontSize: 9, color: '#2d3748', flexShrink: 0, marginLeft: 8 }}>{skill.updated}</span>
+        {viewMode !== 'list' && <span style={{ fontSize: 9, color: 'var(--text-ghost)', flexShrink: 0, marginLeft: 8 }}>{skill.updated}</span>}
       </div>
       {/* Description */}
       <div style={{
-        fontSize: 11, color: '#64748b', lineHeight: 1.5, marginBottom: 10,
-        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+        fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: viewMode === 'list' ? 0 : 10,
+        display: '-webkit-box', WebkitLineClamp: viewMode === 'list' ? 1 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+        flex: viewMode === 'list' ? 1 : 'none', paddingRight: viewMode === 'list' ? 16 : 0
       }}>
         {highlightText(skill.description, search)}
       </div>
       {/* Tags */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, width: viewMode === 'list' ? 'auto' : '100%', justifyContent: 'flex-end', flexShrink: 0 }}>
         <Tag label={skill.category} color={CATEGORY_COLORS[skill.category]} />
-        <Tag label={skill.origin} color="#a3ff12" tooltip={BADGE_TOOLTIPS[skill.origin]} />
+        <Tag label={skill.origin} color="var(--accent)" tooltip={BADGE_TOOLTIPS[skill.origin]} />
         {skill.tags?.slice(0, 2).map(t => <Tag key={t} label={t} small />)}
+        {viewMode === 'list' && <span style={{ fontSize: 9, color: 'var(--text-ghost)', flexShrink: 0, marginLeft: 8, alignSelf: 'center' }}>{skill.updated}</span>}
       </div>
     </div>
   )
+
+  const getGridStyle = () => {
+    if (viewMode === 'list') return { display: 'flex', flexDirection: 'column' as const, gap: 10 }
+    if (viewMode === '2col') return { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }
+    if (viewMode === '3col') return { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }
+    return { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 } // auto
+  }
 
   return (
     <div>
@@ -82,16 +94,16 @@ export default function SkillsPage({ skills, allSkills, search, onSelect, focusI
       {/* Pinned section */}
       {pinnedSkills.length > 0 && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, color: '#2d3748', letterSpacing: '0.12em', marginBottom: 8, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
-            ★ PINNED <div style={{ flex: 1, height: 1, background: '#ffffff06' }} />
+          <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.12em', marginBottom: 8, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
+            ★ PINNED <div style={{ flex: 1, height: 1, background: 'var(--border-faint)' }} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+          <div style={getGridStyle()}>
             {pinnedSkills.map((s, i) => <SkillCard key={s.id} skill={s} isFocused={focusIndex === i} />)}
           </div>
         </div>
       )}
       {/* Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+      <div style={getGridStyle()}>
         {rest.map((s, i) => <SkillCard key={s.id} skill={s} isFocused={focusIndex === (pinnedSkills.length + i)} />)}
       </div>
     </div>
