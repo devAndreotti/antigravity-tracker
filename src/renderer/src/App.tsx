@@ -41,13 +41,12 @@ export default function App() {
     }
   }, [theme])
 
-  // Dados: usa store real após 1º scan, senão fallback mock
-  // lastScan indica que já escaneou — mesmo que retorne zero itens, mostra zero (não mock)
-  const hasScanned = isElectron && !!store.lastScan
-  const SKILLS = hasScanned ? store.skills : MOCK_SKILLS
-  const WORKFLOWS = hasScanned ? store.workflows : MOCK_WORKFLOWS
-  const MCPS = hasScanned ? store.mcps : MOCK_MCPS
-  const WORKSPACES = hasScanned ? (store.workspaces as any[]) : MOCK_WORKSPACES
+  // Dados: Electron → sempre store (mesmo vazio enquanto carrega), Browser → mock
+  // Isso evita o flash de dados mock por ~500ms antes do scan real completar
+  const SKILLS = isElectron ? store.skills : MOCK_SKILLS
+  const WORKFLOWS = isElectron ? store.workflows : MOCK_WORKFLOWS
+  const MCPS = isElectron ? store.mcps : MOCK_MCPS
+  const WORKSPACES = isElectron ? (store.workspaces as any[]) : MOCK_WORKSPACES
 
   // Carrega dados reais ao iniciar
   useEffect(() => {
