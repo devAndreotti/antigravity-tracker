@@ -7,6 +7,7 @@ import SettingsPage from './pages/SettingsPage'
 import CommandPalette from './components/CommandPalette'
 import DetailPanel from './components/DetailPanel'
 import RecentlyUsed, { type RecentItem } from './components/RecentlyUsed'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { useTrackerStore } from './stores/useTrackerStore'
 import {
   SKILLS as MOCK_SKILLS, WORKFLOWS as MOCK_WORKFLOWS,
@@ -26,11 +27,13 @@ export default function App() {
   const store = useTrackerStore()
   const isElectron = typeof window !== 'undefined' && !!window.api?.scan
 
-  // Dados: usa store real se disponível, senão fallback mock
-  const SKILLS = isElectron && store.skills.length > 0 ? store.skills : MOCK_SKILLS
-  const WORKFLOWS = isElectron && store.workflows.length > 0 ? store.workflows : MOCK_WORKFLOWS
-  const MCPS = isElectron && store.mcps.length > 0 ? store.mcps : MOCK_MCPS
-  const WORKSPACES = isElectron && store.workspaces.length > 0 ? store.workspaces : MOCK_WORKSPACES
+  // Dados: usa store real após 1º scan, senão fallback mock
+  // lastScan indica que já escaneou — mesmo que retorne zero itens, mostra zero (não mock)
+  const hasScanned = isElectron && !!store.lastScan
+  const SKILLS = hasScanned ? store.skills : MOCK_SKILLS
+  const WORKFLOWS = hasScanned ? store.workflows : MOCK_WORKFLOWS
+  const MCPS = hasScanned ? store.mcps : MOCK_MCPS
+  const WORKSPACES = hasScanned ? (store.workspaces as any[]) : MOCK_WORKSPACES
 
   // Carrega dados reais ao iniciar
   useEffect(() => {
@@ -179,6 +182,7 @@ export default function App() {
   }
 
   return (
+    <ErrorBoundary>
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', background: '#080B10', color: '#e2e8f0', fontFamily: "'JetBrains Mono', 'Fira Code', monospace", overflow: 'hidden' }}>
 
       {/* Command Palette */}
@@ -323,5 +327,6 @@ export default function App() {
         <span style={{ fontSize: 9, color: '#1e293b' }}>click any item for details</span>
       </div>
     </div>
+    </ErrorBoundary>
   )
 }
