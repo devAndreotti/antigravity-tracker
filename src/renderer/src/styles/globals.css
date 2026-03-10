@@ -1,6 +1,62 @@
 /* Tipografia — Syne para display, JetBrains Mono para código */
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Syne:wght@400;600;700;800&display=swap');
 
+/* ─── TEMA ESCURO (default) ───────────────────────────────────────────────── */
+:root {
+  --bg-root: #080B10;
+  --bg-surface: #060910;
+  --bg-card: #0a0f18;
+  --bg-input: #0a0f18;
+  --bg-hover: #0f1520;
+  --bg-code: #060910;
+  --border: #ffffff0d;
+  --border-hover: #ffffff18;
+  --border-subtle: #ffffff08;
+  --border-faint: #ffffff06;
+  --text-primary: #f1f5f9;
+  --text-secondary: #e2e8f0;
+  --text-muted: #64748b;
+  --text-dim: #4a5568;
+  --text-faint: #2d3748;
+  --text-ghost: #1e293b;
+  --accent: #a3ff12;
+  --accent-bg: #a3ff1210;
+  --accent-border: #a3ff1244;
+  --accent-subtle: #a3ff1218;
+  --scrollbar-thumb: #ffffff10;
+  --scrollbar-hover: #ffffff20;
+  --selection-bg: #a3ff1230;
+  --selection-color: #a3ff12;
+}
+
+/* ─── TEMA CLARO ──────────────────────────────────────────────────────────── */
+:root.light {
+  --bg-root: #f5f5f7;
+  --bg-surface: #ebebed;
+  --bg-card: #ffffff;
+  --bg-input: #ffffff;
+  --bg-hover: #f0f0f3;
+  --bg-code: #f8f8fa;
+  --border: #d1d5db;
+  --border-hover: #9ca3af;
+  --border-subtle: #e5e7eb;
+  --border-faint: #f3f4f6;
+  --text-primary: #111827;
+  --text-secondary: #1f2937;
+  --text-muted: #4b5563;
+  --text-dim: #6b7280;
+  --text-faint: #9ca3af;
+  --text-ghost: #d1d5db;
+  --accent: #16a34a;
+  --accent-bg: #16a34a15;
+  --accent-border: #16a34a44;
+  --accent-subtle: #16a34a18;
+  --scrollbar-thumb: #00000018;
+  --scrollbar-hover: #00000030;
+  --selection-bg: #16a34a30;
+  --selection-color: #16a34a;
+}
+
 /* Reset base */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -11,18 +67,19 @@
 html, body, #root {
   height: 100%;
   width: 100%;
-  background: #080B10;
-  color: #e2e8f0;
+  background: var(--bg-root);
+  color: var(--text-secondary);
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+  transition: background 0.3s, color 0.3s;
 }
 
 /* Scrollbar custom */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #ffffff10; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #ffffff20; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
 
 /* Card hover */
 .card {
@@ -30,13 +87,13 @@ html, body, #root {
 }
 .card:hover {
   transform: translateY(-1px);
-  background: #0f1520 !important;
-  border-color: #ffffff18 !important;
+  background: var(--bg-hover) !important;
+  border-color: var(--border-hover) !important;
 }
 
 /* Inputs */
 input { outline: none; }
-input::placeholder { color: #2d3748; }
+input::placeholder { color: var(--text-faint); }
 
 /* Buttons */
 button { transition: all 0.15s; }
@@ -51,6 +108,6 @@ button { transition: all 0.15s; }
 
 /* Selection */
 ::selection {
-  background: #a3ff1230;
-  color: #a3ff12;
+  background: var(--selection-bg);
+  color: var(--selection-color);
 }

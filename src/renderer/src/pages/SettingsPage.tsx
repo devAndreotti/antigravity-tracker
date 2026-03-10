@@ -8,8 +8,8 @@ const SCAN_INTERVALS: Array<'realtime' | '30s' | '1min' | '5min'> = ['realtime',
 function SectionTitle({ title }: { title: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-      <span style={{ fontSize: 9, fontWeight: 700, color: '#2d3748', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{title}</span>
-      <div style={{ flex: 1, height: 1, background: '#ffffff06' }} />
+      <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{title}</span>
+      <div style={{ flex: 1, height: 1, background: 'var(--border-faint)' }} />
     </div>
   )
 }
@@ -127,8 +127,8 @@ export default function SettingsPage() {
   // ─── STYLES ───────────────────────────────────────────────────────────
 
   const inputStyle: React.CSSProperties = {
-    background: '#0a0f18', border: '1px solid #ffffff0d', borderRadius: 6,
-    padding: '6px 10px', color: '#e2e8f0', fontSize: 12, fontFamily: 'inherit', outline: 'none',
+    background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 6,
+    padding: '6px 10px', color: 'var(--text-secondary)', fontSize: 12, fontFamily: 'inherit', outline: 'none',
   }
 
   const btnStyle: React.CSSProperties = {
@@ -147,21 +147,21 @@ export default function SettingsPage() {
   return (
     <div style={{ maxWidth: 560 }}>
       {/* Status resumo */}
-      <div style={{ marginBottom: 20, padding: '10px 14px', background: '#0a0f18', border: '1px solid #ffffff0d', borderRadius: 8 }}>
+      <div style={{ marginBottom: 20, padding: '10px 14px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
           {[
             ['Skills', skills.length, '#a78bfa'],
-            ['Workflows', workflows.length, '#a3ff12'],
+            ['Workflows', workflows.length, 'var(--accent)'],
             ['MCPs', mcps.length, '#60a5fa'],
             ['Workspaces', workspaces.length, '#f97316'],
           ].map(([label, count, color]) => (
             <div key={label as string} style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 20, fontWeight: 700, color: color as string, fontFamily: "'Syne', sans-serif" }}>{count}</div>
-              <div style={{ fontSize: 9, color: '#2d3748', letterSpacing: '0.08em' }}>{label}</div>
+              <div style={{ fontSize: 9, color: 'var(--text-faint)', letterSpacing: '0.08em' }}>{label}</div>
             </div>
           ))}
         </div>
-        {lastScan && <div style={{ fontSize: 9, color: '#1e293b', marginTop: 8, textAlign: 'center' }}>Last scan: {lastScan.toLocaleTimeString()}</div>}
+        {lastScan && <div style={{ fontSize: 9, color: 'var(--text-ghost)', marginTop: 8, textAlign: 'center' }}>Last scan: {lastScan.toLocaleTimeString()}</div>}
       </div>
 
       {/* Diretórios base (read-only) */}
@@ -170,10 +170,10 @@ export default function SettingsPage() {
         {allBaseDirs.map((dir, i) => (
           <div key={i} style={{
             display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px',
-            background: '#060910', borderRadius: 4, marginBottom: 2,
+            background: 'var(--bg-surface)', borderRadius: 4, marginBottom: 2,
           }}>
-            <span style={{ fontSize: 9, color: '#a3ff12', background: '#a3ff1210', padding: '1px 5px', borderRadius: 3, letterSpacing: '0.06em' }}>{dir.type}</span>
-            <span style={{ flex: 1, fontSize: 10, color: '#2d3748', fontFamily: 'monospace', wordBreak: 'break-all' }}>{dir.path}</span>
+            <span style={{ fontSize: 9, color: 'var(--accent)', background: 'var(--accent-bg)', padding: '1px 5px', borderRadius: 3, letterSpacing: '0.06em' }}>{dir.type}</span>
+            <span style={{ flex: 1, fontSize: 10, color: 'var(--text-faint)', fontFamily: 'monospace', wordBreak: 'break-all' }}>{dir.path}</span>
           </div>
         ))}
       </div>
@@ -271,8 +271,8 @@ export default function SettingsPage() {
       </button>
 
       {/* Data source indicator */}
-      <div style={{ marginTop: 24, padding: '8px 12px', background: '#060910', borderRadius: 6, border: '1px solid #ffffff06' }}>
-        <div style={{ fontSize: 9, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div style={{ marginTop: 24, padding: '8px 12px', background: 'var(--bg-surface)', borderRadius: 6, border: '1px solid var(--border-faint)' }}>
+        <div style={{ fontSize: 9, color: 'var(--text-ghost)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ width: 5, height: 5, borderRadius: '50%', background: isElectron ? '#4ade80' : '#fbbf24', display: 'inline-block' }} />
           {isElectron ? 'Connected to filesystem — reading real data' : 'Browser mode — using mock data'}
         </div>
