@@ -3,6 +3,7 @@
 
 import matter from 'gray-matter'
 import { basename, dirname } from 'path'
+import { autoTag } from './autoTagger'
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 
@@ -22,6 +23,7 @@ export interface ParsedWorkflow {
   slug: string
   description: string
   category: string
+  tags: string[]
   origin: 'global' | 'local'
   workspace?: string
   path: string
@@ -36,6 +38,7 @@ export interface ParsedMcp {
   env: Record<string, string>
   description: string
   tools: string[]
+  tags: string[]
   origin: 'global'
 }
 
@@ -45,12 +48,20 @@ export function parseSkillMd(content: string, filePath: string): ParsedSkill {
   try {
     const { data } = matter(content)
     const folderName = basename(dirname(filePath))
+    const name = data.name || folderName
+    const desc = data.description || ''
+
+    // Mescla as tags manuais do MD com as tags geradas automaticamente
+    const manualTags = normalizeTags(data.tags)
+    const autoTags = autoTag({ name, description: desc, content, path: filePath })
+    const mergedTags = Array.from(new Set([...manualTags, ...autoTags])).slice(0, 5)
+
     return {
       id: folderName,
-      name: data.name || folderName,
-      description: data.description || '',
-      category: data.category || inferCategoryFromTags(data.tags || []),
-      tags: normalizeTags(data.tags),
+      name,
+      description: desc,
+      category: data.category || inferCategoryFromTags(mergedTags),
+      tags: mergedTags,
       path: filePath,
       origin: 'global',
     }
@@ -77,11 +88,15 @@ export function parseWorkflowMd(content: string, filePath: string): ParsedWorkfl
     const isLocal = filePath.includes('.agents') || filePath.includes('_agents') || filePath.includes('.agent') || filePath.includes('_agent')
     const workspaceMatch = filePath.match(/[/\\]([^/\\]+)[/\\]\.(?:agents?|_agents?)[/\\]/)
 
+    const desc = data.description || ''
+    const generatedTags = autoTag({ name: fileName, description: desc, content, path: filePath })
+
     return {
       id: `${isLocal ? 'local' : 'global'}-${fileName}`,
       slug: `/${fileName}`,
-      description: data.description || '',
+      description: desc,
       category: data.category || 'General',
+      tags: generatedTags,
       origin: isLocal ? 'local' : 'global',
       workspace: isLocal ? (workspaceMatch?.[1] || undefined) : undefined,
       path: filePath,
@@ -93,6 +108,7 @@ export function parseWorkflowMd(content: string, filePath: string): ParsedWorkfl
       slug: `/${fileName}`,
       description: '',
       category: 'General',
+      tags: [],
       origin: 'global',
       path: filePath,
     }
@@ -105,17 +121,23 @@ export function parseMcpConfig(raw: string): ParsedMcp[] {
   try {
     const json = JSON.parse(raw)
     const servers = json.mcpServers || json.mcp_servers || json.servers || {}
-    return Object.entries(servers).map(([name, cfg]: [string, any]) => ({
-      id: name,
-      name,
-      type: detectMcpType(cfg.command || ''),
-      command: [cfg.command, ...(cfg.args || [])].filter(Boolean).join(' '),
-      args: cfg.args || [],
-      env: cfg.env || {},
-      description: cfg.description || '',
-      tools: cfg.tools || [],
-      origin: 'global' as const,
-    }))
+    return Object.entries(servers).map(([name, cfg]: [string, any]) => {
+      const command = [cfg.command, ...(cfg.args || [])].filter(Boolean).join(' ')
+      const desc = cfg.description || ''
+
+      return {
+        id: name,
+        name,
+        type: detectMcpType(cfg.command || ''),
+        command,
+        args: cfg.args || [],
+        env: cfg.env || {},
+        description: desc,
+        tools: cfg.tools || [],
+        tags: autoTag({ name, description: desc, command }),
+        origin: 'global' as const,
+      }
+    })
   } catch {
     return []
   }
